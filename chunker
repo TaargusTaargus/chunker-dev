@@ -1,0 +1,205 @@
+#!/usr/bin/python
+from manager import UploadManager
+from chunk import Chunker, Unchunker
+from storage import Storage
+from chunkdb import ChunkDB
+from cred import Credentials
+from warnings import simplefilter
+from os.path import isfile
+from sys import argv
+from multiprocessing import cpu_count
+from state import flags
+ 
+def usage(): 
+  print( '''
+               COMMANDS: 
+               chunker upload [OPTIONS...] [DIR]
+               chunker download [OPTIONS...] [WRITE-DIR] [DIR]
+               chunker ls-all [DB-NAME]
+               chunker help [COMMAND]
+
+              GENERAL OPTIONS:
+                -s [mode]
+                  determines storage location: box, drive (default)
+                -m [db]
+                  specify the database file to write to/read from
+                -v, --verbose
+                  more verbose output from chunk
+              UPLOAD OPTIONS:
+                -t [# of threads]
+                  request threading with specified total threads spawned 
+                -e, --encrypt
+                  enable encryption
+                -c [size]
+                  chunk all files within [size] byte chunks
+                -cf, --collapse
+                  collapse the filesystem on upload
+                -f, --force
+                  forces  reupload
+                -a, --fast
+                  fastest mode for upload (turns on -cf, -c 10000000, -t #ofcpus)
+									
+     ''' )
+
+
+def upload_usage():
+  print( '''
+              Usage: chunker upload [OPTIONS...] [DIR]
+            
+              Command to chunk all files in a given directory
+
+              [DIR]        - directory to be chunked
+         ''' )
+
+
+def download_usage():
+  print( '''
+              Usage: chunker download [OPTIONS...] [WRITE-DIR] [DIR]
+
+              Command to unchunk all files of a given directory
+
+              [WRITE-DIR]  - directory to store restored data
+              [DIR]        - directory to be restored ( use '/' to restore all directories )
+         ''' )
+
+
+def list_usage():
+  print( '''
+              Usage: chunker ls-all [DB-NAME]
+
+              Command to list all chunked contents of a database
+
+              [DB-NAME]    - location of database containing chunk meta-data 
+         ''' )
+
+
+def help_usage():
+  print( '''
+              Usage: chunker help [COMMAND]
+
+              Command to receive help on using a particular command
+
+              [COMMAND]   - command to be explained
+         ''' )
+
+
+simplefilter( "ignore" )
+argc = len( argv )
+if argc == 1:
+  usage()
+  exit( 0 )
+
+mode = argv[ 1 ]
+if mode not in [ 'download', 'upload', 'ls-all', 'help' ]:
+  usage()
+  exit( 0 )
+
+database_name = "meta.db"
+storage_mode = "drive"
+thread_count = cpu_count()
+cred_file = None
+
+if '-s' in argv:
+  storage_mode = argv[ argv.index( '-s' ) + 1 ]
+  argc -= 2
+
+if '-v' in argv or '--verbose' in argv:
+  flags[ 'verbose_flag' ] = True
+  argc -= 1
+
+if '-m' in argv:
+  database_name = argv[ argv.index( '-m' ) + 1 ]
+  argc -= 2
+elif mode == 'ls-all':
+  database_name = argv[ -1 ]
+
+if mode == 'upload':
+  if '-t' in argv:
+    thread_count = int( argv[ argv.index( '-t' ) + 1 ] )
+    argc -= 2
+  
+  if '-c' in argv:
+    flags[ 'chunk_size' ] = int( argv[ argv.index( '-c' ) + 1 ] )
+    argc -= 2
+  
+  if '-e' in argv or '--encrypt' in argv:
+    flags[ 'encrypt_flag' ] = True
+    argc -= 1
+
+  if '-cf' in argv or '--collapse' in argv:
+		flags[ 'collapse_flag' ] = True
+		argc -= 1
+
+  if '-f' in argv or '--force' in argv:
+    flags[ 'force_flag' ] = True
+    argc -= 1
+
+  if '-a' in argv or '--fast' in argv:
+		flags[ 'collapse_flag' ] = True
+		flags[ 'chunk_size' ] = 10000000
+		argc -= 1
+
+  if thread_count > cpu_count():
+    print( "WARNING: thread count higher than available cores (" + str( cpu_count() ) + "), might cause slowdown ... " )
+
+if argc < 3 and mode == 'upload':
+  upload_usage() 
+  exit()
+
+if argc < 4 and mode == 'download':
+  download_usage() 
+  exit()
+
+if argc != 3 and mode == 'ls-all':
+  list_usage() 
+  exit()
+
+if argc != 3 and mode == 'help':
+  help_usage()
+  exit()
+
+if mode == 'help':
+  command = argv[ -1 ]
+  if command == 'upload':
+    upload_usage()
+  elif command == 'download':
+    download_usage()
+  elif command == 'ls-all':
+    list_usage()
+  elif command == 'help':
+    help_usage()
+  else:
+    print( 'unknown command ...' )
+  exit()
+
+if not isfile( database_name ) and ( mode == 'download' or mode == 'ls-all' ):
+  print( "ERROR: could not find database file '" + database_name + "' ..." )  
+  exit()
+
+if flags[ 'verbose_flag' ]:
+  print( 'connecting to database ' + database_name + ' ...' )
+
+#TEMPORARY
+if mode != 'upload':
+  meta_db = ChunkDB( database_name ) 
+
+if mode == 'upload' or mode == 'download': 
+  if flags[ 'verbose_flag' ]:
+    print( 'connecting to storage service ' + storage_mode + ' ...' )
+  credentials = Credentials( cred_file )
+   
+  if flags[ 'verbose_flag' ]:
+    print( 'creating ' + mode + 'ing service ...' )
+ 
+  if mode == 'upload':
+		uploader = UploadManager( credentials, database_name, argv[ -1 ], thread_count )
+		uploader.upload( argv[ -1 ] )
+  else:
+    storage = Storage( credentials.get_client() )
+    unchunker = Unchunker( meta_db, storage )
+    unchunker.unchunk( argv[ -2 ], argv[ -1 ] )
+
+#if user wants to list chunked files
+elif mode == 'ls-all':
+  meta_db.list_all_files() 
+
