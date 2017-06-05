@@ -1,6 +1,5 @@
 #!/usr/bin/python
-from manager import UploadManager
-from chunk import Chunker, Unchunker
+from manager import UploadManager, DownloadManager
 from storage import Storage
 from chunkdb import ChunkDB
 from cred import Credentials
@@ -179,9 +178,6 @@ if not isfile( database_name ) and ( mode == 'download' or mode == 'ls-all' ):
 if flags[ 'verbose_flag' ]:
   print( 'connecting to database ' + database_name + ' ...' )
 
-#TEMPORARY
-if mode != 'upload':
-  meta_db = ChunkDB( database_name ) 
 
 if mode == 'upload' or mode == 'download': 
   if flags[ 'verbose_flag' ]:
@@ -192,12 +188,11 @@ if mode == 'upload' or mode == 'download':
     print( 'creating ' + mode + 'ing service ...' )
  
   if mode == 'upload':
-		uploader = UploadManager( credentials, database_name, argv[ -1 ], thread_count )
+		uploader = UploadManager( credentials, database_name, thread_count )
 		uploader.upload( argv[ -1 ] )
   else:
-    storage = Storage( credentials.get_client() )
-    unchunker = Unchunker( meta_db, storage )
-    unchunker.unchunk( argv[ -2 ], argv[ -1 ] )
+    downloader = DownloadManager( credentials, database_name, thread_count )  
+    downloader.download( argv[ -2 ] )
 
 #if user wants to list chunked files
 elif mode == 'ls-all':

@@ -79,6 +79,7 @@ class Chunker( Process ):
 
     # handling user flags
     self.encrypt = flags[ 'encrypt_flag' ]
+    self.iv = None if not self.encrypt else ''.join( str( randint( 0, 9 ) ) for _ in range( 16 ) )
     self.verbose = flags[ 'verbose_flag' ]
     self.collapse = flags[ 'collapse_flag' ]
     self.force = flags[ 'force_flag' ]
@@ -99,8 +100,7 @@ class Chunker( Process ):
    
     if self.encrypt:
       key = str( md5( self.curr.string ).hexdigest() )
-      iv = ''.join( str( randint( 0, 9 ) ) for _ in range( 16 ) )
-      self.curr.encrypt( key, iv )
+      self.curr.encrypt( key, self.iv )
     encoding = self.curr.encode()
 
     if self.verbose:
@@ -114,7 +114,7 @@ class Chunker( Process ):
       e[ 'chunk_order' ] = self.chunk_count
       e[ 'chunk_id' ] = chunk_name
       e[ 'hash_key' ] = key if self.encrypt else ''
-      e[ 'init_vec' ] = iv if self.encrypt else ''
+      e[ 'init_vec' ] = self.iv if self.encrypt else ''
       e[ 'encoding' ] = encoding
       self.meta_db.fill_db_from_dict( e, self.meta_db.CHUNK_TABLE )
 
@@ -232,8 +232,8 @@ class Chunker( Process ):
         self.chunk_file( file_handle, fpair, file_name, entry )
 
   
-  def to_chunk( self, file_name, abs_path, fpair, db_entry ):
-    self.chunk_queue.append( ( file_name, abs_path, fpair, db_entry ) )#rel_path if rel_path != '.' else '', db_entry ) )
+  def queue( self, file_name, abs_path, fpair, db_entry ):
+    self.chunk_queue.append( ( file_name, abs_path, fpair, db_entry ) )
    
       
   def run( self ): 
@@ -250,9 +250,12 @@ class Chunker( Process ):
     self.chunk_queue = [] 
 
 
-class Unchunker:
+
+class Unchunker ( Process ):
 
   def __init__( self, db, storage ):
+    Process.__init__( self )
+
     # handling user flags
     self.verbose = flags[ 'verbose_flag' ]
 
@@ -336,37 +339,33 @@ class Unchunker:
     if self.verbose:
       print( 'unchunking directory ' + read_handle + ' ...' )
    
-    self.__restore_meta_data__( write_handle, meta )    
+    self.__restore_meta_data__( write_handle, meta )     
  
- 
-  def unchunk( self, write_directory, object_path='/' ): 
-    # because os.path is dumb
-    if object_path[ -1 ] != sep:
-      object_path = object_path + sep
-    if object_path[ 0 ] == sep:
-      object_path = object_path[ 1: ]
 
-    empty_flag = True
+  def unchunk( self, write_directory, object_path, db_entry, type ):
+   
     # first create all folders and directores, and add permission to files
-    for chunk_name, in self.meta_db.get_related_chunks( object_path ):
-      self.read_chunk( chunk_name, write_directory, object_path )
-      empty_flag = False
+    if type == 'file':
+      self.read_chunk( db_entry, write_directory, object_path )
  
     # create all symlinks
-    for link_path, link_handle, link_dest in self.meta_db.get_related_symlinks( where={ 'link_path': object_path } ):
+    if type == 'link':
+      link_path, link_handle, link_dest = db_entry
       link_path = relpath( link_path, object_path ) 
-      ensure_path( join( write_directory, link_path ) )
       self.unchunk_symlink( link_handle, join( write_directory, relpath( link_handle, object_path ) ), link_dest )
-      empty_flag = False
 
     # place permissions onto folders after everything is created
-    for directory_path, in self.meta_db.get_related_directories( where={ 'directory_path': object_path } ): 
+    if type == 'directory':
+      directory_path = db_entry
       write_file_path = join( write_directory, relpath( directory_path, object_path ) )
-      ensure_path( write_file_path )
       self.unchunk_directory( directory_path, write_file_path )
-      empty_flag = False
+ 
 
-    if empty_flag:
-      print( "WARNING: found no objects with root path '" + sep + object_path +"' ..." ) 
+ 
+  def queue( self, write_dir, object_path, db_entry, type ):
+    self.queue.append( ( write_dir, object_path, db_entry, type ) )
 
 
+  def run( self ):
+    for wdir, path, entry, type in self.queue:
+      unchunk( wdir, path, entry, type ) 
