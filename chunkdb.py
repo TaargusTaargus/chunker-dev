@@ -8,6 +8,8 @@ class ChunkDB:
   FILE_TABLE = "files"
   DIRECTORY_TABLE = "directories"
   SYMLINK_TABLE = "links"
+  PERMISSIONS_TABLE = "permissions"
+
 
   def __init__( self, db_name=":memory:" ):
     self.db_name = db_name
@@ -15,6 +17,12 @@ class ChunkDB:
     self.cursor = self.meta_db.cursor()
     tables = [ t for t, in self.cursor.execute( "SELECT name FROM sqlite_master WHERE type='table'" ).fetchall() ]
     self.update = bool( len( tables ) )
+
+    if self.PERMISSIONS_TABLE not in tables:
+      self.cursor.execute( "CREATE TABLE " + self.PERMISSIONS_TABLE + ''' ( file_handle text, file_owner text,
+                                                                            file_permissions text, file_group text,
+                                                                            file_mod_time text ) ''' )
+                                                                      
 
     if self.CHUNK_TABLE not in tables:
       self.cursor.execute( "CREATE TABLE " + self.CHUNK_TABLE + ''' ( chunk_order int, chunk_id text,
@@ -24,16 +32,11 @@ class ChunkDB:
 
     if self.FILE_TABLE not in tables:
       self.cursor.execute( "CREATE TABLE " + self.FILE_TABLE + ''' (  file_path text, file_handle text,
-                                                                      file_checksum text, file_owner text,
-                                                                      file_permissions text, file_group text,
-                                                                      file_mod_time text,
-                                                                      UNIQUE( file_handle ) )''' )
+                                                                      file_checksum text, UNIQUE( file_handle ) )''' )
 
     if self.DIRECTORY_TABLE not in tables:
       self.cursor.execute( "CREATE TABLE " + self.DIRECTORY_TABLE
-                             + ''' ( directory_path text, file_owner text, file_permissions text,
-                                     file_group text, file_mod_time text,
-                                     UNIQUE( directory_path) ) ''' )
+                             + ''' ( directory_path text, UNIQUE( directory_path ) ) ''' )
 
     if self.SYMLINK_TABLE not in tables:
       self.cursor.execute( "CREATE TABLE " + self.SYMLINK_TABLE
@@ -51,7 +54,7 @@ class ChunkDB:
 
 
   def copy_other_db( self, chunkdb ):
-    for table in self.CHUNK_TABLE, self.FILE_TABLE, self.SYMLINK_TABLE, self.DIRECTORY_TABLE:
+    for table in self.PERMISSIONS_TABLE, self.CHUNK_TABLE, self.FILE_TABLE, self.SYMLINK_TABLE, self.DIRECTORY_TABLE:
       for entry in chunkdb.fill_dicts_from_db( [ '*' ], {}, table ):
         self.fill_db_from_dict( entry, table )
 

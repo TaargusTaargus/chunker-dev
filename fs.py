@@ -1,6 +1,6 @@
 from StringIO import StringIO
 from gzip import open as g_open
-from utilities import trim, ensure_path, persistent_try
+from utilities import trim, persistent_try
 from time import sleep
 from os import makedirs
 from os.path import join
@@ -15,7 +15,7 @@ class FilePair:
 
 class Filesystem:
 
-  def __init__( self, client, root, mode="drive" ):
+  def __init__( self, client, root, mode='drive' ):
     self.client = client
     self.mode = mode
     self.root = root
@@ -52,35 +52,23 @@ class Filesystem:
         root = file[ 'id' ]
     return root		
 
-
-  def __local_mkdir__( self, abs_path ):
-    ensure_path( abs_path )
-    return abs_path
-
-
   def __mkdir__( self, folder_path ):
     if self.mode == 'box':
       return persistent_try( self.__box_mkdir__, [ folder_path ], 'resolving folder' )
     elif self.mode == 'drive':
       return persistent_try( self.__drive_mkdir__, [ folder_path ], 'resolving folder' )
-    elif self.mode == 'local':
-      return self.__local_mkdir__( folder_path )
 
 
-  def mkdir( self, lpath, rid=None ):
-    #lpath = join( self.root, lpath )
+  def mkdir( self, relpath, rid=None ):
     if rid:
-      self.dirs[ lpath ] = rid
-	
-    elif lpath not in self.dirs:
-      self.dirs[ lpath ] = self.__mkdir__( join( self.root, lpath ) )
+      self.dirs[ relpath ] = rid 
+  
+    if relpath not in self.dirs:
+      self.dirs[ relpath ] = self.__mkdir__( join( self.root, relpath ) )
 
 
-  def get_remote_id( self, key=None ):
-    return self.dirs[ key if key else self.root ]
 
-
-  def get_filepair( self, key ):
+  def get_filepair( self, key=None ):
     try: 
       return FilePair( key, self.dirs[ key ] )
     except:

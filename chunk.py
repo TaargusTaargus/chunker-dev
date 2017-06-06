@@ -75,7 +75,7 @@ class Chunker( Process ):
   def __init__( self, db, storage ):
     # threading related stuff
     Process.__init__( self )
-    self.chunk_queue = []
+    self.chunk_queue = { 'dir': [], 'file': [], 'link': [] }
 
     # handling user flags
     self.encrypt = flags[ 'encrypt_flag' ]
@@ -92,6 +92,15 @@ class Chunker( Process ):
     self.chunk_count = len( self.meta_db.get_related_chunks() )
     self.chunk_size = flags[ 'chunk_size' ]
     self.curr = None
+
+
+  def __record_permissions__( self, handle, file_stats ):
+    self.meta_db.fill_db_from_dict( { 'file_handle': handle,
+                                      'file_owner' : file_stats.st_uid,
+                                      'file_permissions' : file_stats.st_mode,
+                                      'file_group' : file_stats.st_gid,
+                                      'file_mod_time': file_stats.st_mtime }, self.meta_db.PERMISSIONS_TABLE )
+ 
 
 
   def write_chunk( self, chunk_dir ):
@@ -155,14 +164,13 @@ class Chunker( Process ):
     if self.verbose:
       print( "chunking file " + read_handle + " ..." )
   
-              
+ 
+    # record permissions
+    self.__record_permissions__( file_handle, file_stats )
+             
     self.meta_db.fill_db_from_dict( { 'file_path' : fpair.fsource,
                               'file_handle' : file_handle,
-                              'file_owner' : file_stats.st_uid,
-                              'file_permissions' : file_stats.st_mode,
-                              'file_group' : file_stats.st_gid,
-                              'file_checksum' : checksum,
-                              'file_mod_time': file_stats.st_mtime }, self.meta_db.FILE_TABLE ) 
+                              'file_checksum' : checksum }, self.meta_db.FILE_TABLE ) 
     
     file_size = file_stats.st_size
     if not self.chunk_size: 
@@ -206,11 +214,8 @@ class Chunker( Process ):
   def chunk_directory( self, read_handle, rel_handle ):
     try:
       file_stats = stat( read_handle )
-      meta = { 'directory_path' : rel_handle,
-               'file_owner' : file_stats.st_uid,
-               'file_permissions' : file_stats.st_mode,
-               'file_group' : file_stats.st_gid,
-               'file_mod_time': file_stats.st_mtime }
+      self.__record_permissions__( rel_handle, file_stats )
+      meta = { 'directory_path' : rel_handle }
     except:
       print( "ERROR: unable to find statistics on " + read_handle + ", skipping ..." )
       return         
@@ -220,36 +225,49 @@ class Chunker( Process ):
 
     self.meta_db.fill_db_from_dict( meta, self.meta_db.DIRECTORY_TABLE )   
 
-
-  def chunk( self, file_name, abs_path, fpair, entry ):
-    file_handle = join( abs_path, file_name )
-    if isdir( file_handle ):
-      self.chunk_directory( file_handle, join( fpair.fsource, file_name ) )
-    else:
-      if islink( file_handle ):
-        self.chunk_symlink( file_handle, fpair.fsource, file_name, readlink( file_handle ) )
-      else:
-        self.chunk_file( file_handle, fpair, file_name, entry )
-
   
   def queue( self, file_name, abs_path, fpair, db_entry ):
-    self.chunk_queue.append( ( file_name, abs_path, fpair, db_entry ) )
-   
-      
-  def run( self ): 
+    file_handle = join( abs_path, file_name )
+    if isdir( file_handle ):
+      self.__queue_dir__( file_handle, join( fpair.fsource, file_name ) )
+    else:
+      if islink( file_handle ):
+        self.__queue_link__( file_name, file_handle, fpair )
+      else:
+        self.__queue_file__( file_handle, fpair, file_name, db_entry )
+  
+  
+  def __queue_dir__( self, handle, rel_handle ):
+    self.chunk_queue[ 'dir' ].append( ( handle, rel_handle ) )
+
+
+  def __queue_file__( self, file_name, abs_path, fpair, entry ):
+    self.chunk_queue[ 'file' ].append( ( file_name, abs_path, fpair, entry ) )
+
+
+  def __queue_link__( self, file_name, file_handle, fpair ):
+    self.chunk_queue[ 'link' ].append( ( file_handle, fpair.fsource, file_name, readlink( file_handle ) ) )
+ 
+  
+  def run( self ):
     self.curr = Chunk( str( self.chunk_count ) + '-' + str( self.pid ) + self.CHUNK_EXTENSION )
     last = None
     
-    for file_name, abs_path, fpair, entry in self.chunk_queue:
-      self.chunk( file_name, abs_path, fpair, entry ) 
+    for handle, rel_handle in self.chunk_queue[ 'dir' ]:
+      self.chunk_directory( handle, rel_handle )
+  
+    for file_handle, fpair, file_name, entry in self.chunk_queue[ 'file' ]:
+      self.chunk_file( file_handle, fpair, file_name, entry ) 
       last = fpair.fdest
  
     if self.curr.used > 0:
       self.write_chunk( last )
-    
-    self.chunk_queue = [] 
 
+    for handle, source, fname, dest in self.chunk_queue[ 'link' ]:
+      self.chunk_symlink( handle, source, fname, dest )
 
+    self.chunk_queue = []
+         
 
 class Unchunker ( Process ):
 

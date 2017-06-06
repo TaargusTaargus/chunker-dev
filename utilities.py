@@ -8,9 +8,11 @@ def dwalk( client, root ):
   dirs = [ ( root, "" ) ]
   while dirs:
     dir = dirs.pop()
-    cdirs, files = lsplit( client.ListFile({'q': "'" + dir[ 0 ] + "' in parents"}).GetList(), 'mimeType', 'application/vnd.google-apps.folder' ) 
+    cdirs, files = lsplit( client.ListFile({'q': "'" + dir[ 0 ] + "' in parents"}).GetList(), 'mimeType', 'application/vnd.google-apps.folder' )
     dirs.extend( [ ( e[ 'id' ], dir[ 1 ] + e[ 'title' ] + sep ) for e in cdirs ] )
     yield dir[ 1 ], dir[ 0 ], files, cdirs
+
+
 
 def lsplit( list, key, val ):
   w, wo = [], []

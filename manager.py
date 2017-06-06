@@ -6,7 +6,7 @@ from storage import Storage
 from chunk import Chunker, Unchunker
 from state import flags
 from fs import Filesystem
-from utilities import dwalk
+from utilities import dwalk, ensure_path
 
 class Manager( object ):
 
@@ -131,11 +131,15 @@ class DownloadManager( Manager ):
     all_files = []
     self.fs = Filesystem( self.cred.get_client(), basename( normpath( read_path ) ) )
     read_path = abspath( read_path )
+    ensure_path( read_path )
 
-
-    for path, id, files, dirs in dwalk( self.cred.get_client(), self.fs.get_remote_id() ):
+		### filesystem only handles remote now
+     
+    
+    for path, id, files, dirs in dwalk( self.cred.get_client(), self.fs.get_filepair().fdest ):
       if not flags[ 'collapse_flag' ] and path:
-        self.fs.mkdir( path, id  )
+        ensure_path( join( read_path, path ) )
+     
       print( "root: " + path ) 
       print( "files:" )
       print( [ e[ 'title' ] for e in files ] )
