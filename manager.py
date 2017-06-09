@@ -95,9 +95,9 @@ class UploadManager( Manager ):
 
 class DownloadManager( Manager ):
   
-  def __init__( self, credentials, db_name, total_procs=1 ):
+  def __init__( self, credentials, db_name=None, total_procs=1 ):
     self.cred = credentials
-    self.db = ChunkDB( db_name )  
+    self.db = ChunkDB( db_name ) if db_name else None
     self.fs = None
     Manager.__init__( self, total_procs )
 
@@ -134,12 +134,12 @@ class DownloadManager( Manager ):
     ensure_path( read_path )
 
 		### filesystem only handles remote now
-     
+    ### download does not write to database     
     
     for path, id, files, dirs in dwalk( self.cred.get_client(), self.fs.get_filepair().fdest ):
       if not flags[ 'collapse_flag' ] and path:
         ensure_path( join( read_path, path ) )
-     
+   
       print( "root: " + path ) 
       print( "files:" )
       print( [ e[ 'title' ] for e in files ] )

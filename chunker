@@ -93,7 +93,7 @@ if mode not in [ 'download', 'upload', 'ls-all', 'help' ]:
   usage()
   exit( 0 )
 
-database_name = "meta.db"
+database_name = None
 storage_mode = "drive"
 thread_count = cpu_count()
 cred_file = None
@@ -171,14 +171,6 @@ if mode == 'help':
     print( 'unknown command ...' )
   exit()
 
-if not isfile( database_name ) and ( mode == 'download' or mode == 'ls-all' ):
-  print( "ERROR: could not find database file '" + database_name + "' ..." )  
-  exit()
-
-if flags[ 'verbose_flag' ]:
-  print( 'connecting to database ' + database_name + ' ...' )
-
-
 if mode == 'upload' or mode == 'download': 
   if flags[ 'verbose_flag' ]:
     print( 'connecting to storage service ' + storage_mode + ' ...' )
@@ -188,6 +180,7 @@ if mode == 'upload' or mode == 'download':
     print( 'creating ' + mode + 'ing service ...' )
  
   if mode == 'upload':
+    database_name = argv[ -1 ] + '-db'
 		uploader = UploadManager( credentials, database_name, thread_count )
 		uploader.upload( argv[ -1 ] )
   else:
