@@ -52,6 +52,7 @@ class Filesystem:
         root = file[ 'id' ]
     return root		
 
+
   def __mkdir__( self, folder_path ):
     if self.mode == 'box':
       return persistent_try( self.__box_mkdir__, [ folder_path ], 'resolving folder' )
@@ -65,7 +66,6 @@ class Filesystem:
   
     if relpath not in self.dirs:
       self.dirs[ relpath ] = self.__mkdir__( join( self.root, relpath ) )
-
 
 
   def get_filepair( self, key=None ):

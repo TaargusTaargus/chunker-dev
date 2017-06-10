@@ -76,12 +76,7 @@ class UploadManager( Manager ):
       for root, dirs, files in walk( read_path, topdown=False, followlinks=False ):
         rel = relpath( root, read_path )
         rel = rel if rel[ 0 ] != '.' or len( rel ) > 1 else rel[ 1: ]
-        
-        print( "root: " + root )
-  
-        print( "rel: " + rel )
-       
-      
+
         if not flags[ 'collapse_flag' ] and rel:
           self.fs.mkdir( rel )
           for dir in dirs:
@@ -126,24 +121,28 @@ class DownloadManager( Manager ):
       else:
         self.proc_list.append( proc )
 
-  def download( self, read_path ):
+
+  def download( self, read_path, write_dir=None ):
     #find all files within a directory, ignoring any existing chunk or metadata files
+    write_dir = write_dir if write_dir else read_path
     all_files = []
-    self.fs = Filesystem( self.cred.get_client(), basename( normpath( read_path ) ) )
     read_path = abspath( read_path )
     ensure_path( read_path )
-
+  
 		### filesystem only handles remote now
     ### download does not write to database     
     
-    for path, id, files, dirs in dwalk( self.cred.get_client(), self.fs.get_filepair().fdest ):
-      if not flags[ 'collapse_flag' ] and path:
-        ensure_path( join( read_path, path ) )
+    for path, id, files, dirs in dwalk( self.cred.get_client(), read_path ):
+      abs_path = join( read_path, path )   
    
+      if not flags[ 'collapse_flag' ] and path:
+        ensure_path( abs_path )
+        for dir in dirs:
+          pair = FilePair( id, abs_path )
+
+      
       print( "root: " + path ) 
       print( "files:" )
       print( [ e[ 'title' ] for e in files ] )
       print( "dirs:" )
       print( [ e[ 'title' ] for e in dirs ] )
-
-

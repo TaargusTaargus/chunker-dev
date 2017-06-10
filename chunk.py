@@ -285,7 +285,7 @@ class Unchunker ( Process ):
     self.queue = []
 
 
-  def __restore_meta_data__( self, handle, meta ):
+  def __restore_permissions__( self, handle, meta ):
     try:
       chmod( handle, int( meta[ 'file_permissions' ] ) )
     except:
@@ -344,20 +344,19 @@ class Unchunker ( Process ):
     self.__restore_meta_data__( write_handle, meta )
 
 
-  def unchunk_symlink( self, read_handle, write_handle, link_dest ):
+  def unchunk_symlink( self, write_handle, link_dest ):
     if self.verbose:
-      print( 'unchunking symlink ' + read_handle + ' ...' )
+      print( 'unchunking symlink ' + write_handle + ' ...' )
      
     symlink( link_dest, write_handle )   
 
 
-  def unchunk_directory( self, read_handle, write_handle ):
-    meta = self.meta_db.fill_dicts_from_db( [], { 'directory_path': read_handle }, self.meta_db.DIRECTORY_TABLE ).pop()
+  def unchunk_directory( self, write_handle, permissions ):
 
     if self.verbose:
-      print( 'unchunking directory ' + read_handle + ' ...' )
+      print( 'unchunking directory ' + write_handle + ' ...' )
    
-    self.__restore_meta_data__( write_handle, meta )     
+    self.__restore_meta_data__( write_handle, permissions )     
  
 
   def unchunk( self, write_directory, object_path, db_entry, type ):
@@ -378,6 +377,17 @@ class Unchunker ( Process ):
       write_file_path = join( write_directory, relpath( directory_path, object_path ) )
       self.unchunk_directory( directory_path, write_file_path )
  
+
+  def __queue_chunk__( self, chunk_name, write_directory, permissions ):
+    return
+    
+  
+  def __queue_dir__( self, dir_handle, permissions ):
+    self.queue[ 'dirs' ].append( ( dir_handle, permissions ) )
+
+
+  def __queue_link__( self, write_handle, link_dest ):
+    self.queue[ 'links' ].append( ( write_handle, link_dest ) ) 
 
  
   def queue( self, write_dir, object_path, db_entry, type ):

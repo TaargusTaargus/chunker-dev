@@ -12,24 +12,26 @@ from state import flags
 def usage(): 
   print( '''
                COMMANDS: 
-               chunker upload [OPTIONS...] [DIR]
-               chunker download [OPTIONS...] [WRITE-DIR] [DIR]
-               chunker ls-all [DB-NAME]
-               chunker help [COMMAND]
+               chunker upload [OPTIONS...] DIR
+               chunker download [OPTIONS...] DIR
+               chunker ls-all DB-NAME
+               chunker help COMMAND
 
               GENERAL OPTIONS:
-                -s [mode]
+                -s mode
                   determines storage location: box, drive (default)
-                -m [db]
+                -m db
                   specify the database file to write to/read from
                 -v, --verbose
                   more verbose output from chunk
+                -w [WRITE-DIR]
+                  directory to write uploaded/downloaded files to (defaults to [DIR])
               UPLOAD OPTIONS:
-                -t [# of threads]
+                -t # of threads
                   request threading with specified total threads spawned 
                 -e, --encrypt
                   enable encryption
-                -c [size]
+                -c size
                   chunk all files within [size] byte chunks
                 -cf, --collapse
                   collapse the filesystem on upload
@@ -43,7 +45,7 @@ def usage():
 
 def upload_usage():
   print( '''
-              Usage: chunker upload [OPTIONS...] [DIR]
+              Usage: chunker upload [OPTIONS...] DIR
             
               Command to chunk all files in a given directory
 
@@ -53,18 +55,17 @@ def upload_usage():
 
 def download_usage():
   print( '''
-              Usage: chunker download [OPTIONS...] [WRITE-DIR] [DIR]
+              Usage: chunker download [OPTIONS...] DIR
 
               Command to unchunk all files of a given directory
 
-              [WRITE-DIR]  - directory to store restored data
-              [DIR]        - directory to be restored ( use '/' to restore all directories )
+              [DIR]        - directory to be restored ( use '/' to restore all directories ) 
          ''' )
 
 
 def list_usage():
   print( '''
-              Usage: chunker ls-all [DB-NAME]
+              Usage: chunker ls-all DB-NAME
 
               Command to list all chunked contents of a database
 
@@ -74,7 +75,7 @@ def list_usage():
 
 def help_usage():
   print( '''
-              Usage: chunker help [COMMAND]
+              Usage: chunker help COMMAND
 
               Command to receive help on using a particular command
 
@@ -97,9 +98,14 @@ database_name = None
 storage_mode = "drive"
 thread_count = cpu_count()
 cred_file = None
+writedir = None
 
 if '-s' in argv:
   storage_mode = argv[ argv.index( '-s' ) + 1 ]
+  argc -= 2
+
+if '-w' in argv:
+  writedir = argv[ argv.index( '-w' ) + 1 ]
   argc -= 2
 
 if '-v' in argv or '--verbose' in argv:
@@ -145,7 +151,7 @@ if argc < 3 and mode == 'upload':
   upload_usage() 
   exit()
 
-if argc < 4 and mode == 'download':
+if argc < 3 and mode == 'download':
   download_usage() 
   exit()
 
@@ -181,11 +187,11 @@ if mode == 'upload' or mode == 'download':
  
   if mode == 'upload':
     database_name = argv[ -1 ] + '-db'
-		uploader = UploadManager( credentials, database_name, thread_count )
-		uploader.upload( argv[ -1 ] )
+    uploader = UploadManager( credentials, database_name, thread_count )
+    uploader.upload( argv[ -1 ], writedir )
   else:
     downloader = DownloadManager( credentials, database_name, thread_count )  
-    downloader.download( argv[ -2 ] )
+    downloader.download( argv[ -1 ], writedir )
 
 #if user wants to list chunked files
 elif mode == 'ls-all':
