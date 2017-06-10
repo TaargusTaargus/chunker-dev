@@ -94,6 +94,15 @@ class ChunkDB:
     return [ key[ 0 ] for key in self.cursor.description ], entries
 
 
+  def get_chunk_file_permissions( self, chunk_id ):
+    entries - self.cursor.execute( "SELECT pt.* FROM " + self.CHUNK_TABLE
+                                   + " ct INNER JOIN " + self.PERMISSIONS_TABLE 
+                                   + " pt ON ct.file_handle = pt.file_handle"
+                                   + " WHERE ct.chunk_id = " + chunk_id ) 
+    return [ key[ 0 ] for key in self.cursor.description ], entries
+
+
+
   def get_related_chunks( self, file_path='' ):
     return self.cursor.execute( 'SELECT DISTINCT chunk_id FROM ' + self.CHUNK_TABLE 
                                 + " WHERE file_handle LIKE '" + file_path + "%'"

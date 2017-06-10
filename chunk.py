@@ -299,35 +299,32 @@ class Unchunker ( Process ):
     utime( handle, ( float( meta[ 'file_mod_time' ] ), float( meta[ 'file_mod_time' ] ) ) )
 
 
-  def read_chunk( self, chunk_name, write_directory, object_path ):
+  def read_chunk( self, chunk_entry, write_directory, chunk_file_table ):
     chunk = Chunk()
-    keys, files = self.meta_db.get_chunk_entries( chunk_name, object_path )
-    if chunk_name == EMPTY_CHUNK_NAME:
+    if chunk_entry[ 'chunkid' ] == EMPTY_CHUNK_NAME:
       chunk.string = "~"
     else:
-      chunk.string = self.storage.read_chunk( chunk_name )
+      chunk.string = self.storage.read_chunk( chunk_entry[ 'chunkid' ] )  
 
-    
-    if len( files ) >= 1:
-      chunk.decode( files[ 0 ][ 5 ] )
-      if files[ 0 ][ 6 ] and files[ 0 ][ 7 ]:
-        chunk.decrypt( files[ 0 ][ 6 ], files[ 0 ][ 7 ] )
+    if len( file_entries ) > 0:
+      chunk.decode( chunk_entry[ 'encoding' ] )
+      if chunk_entry[ 'hash_key' ] and chunk_entry[ 'init_vec' ]:
+        chunk.decrypt( chunk_entry[ 'hash_key' ], chunk_entry[ 'init_vec' ] )  
     else:
-      print( "WARNING: was unable to retrieve file information on " + chunk_name + " ..." )
-      
+      print( "WARNING: was unable to retrieve file information on " + chunk_entry[ 'chunkid' ] + " ..." )
+  
+    headers, rows = chunk_file_entries
 
-    current_handle = None
-    for row in files:
-      meta = dict( zip( keys, row ) )
-      self.unchunk_file( meta[ 'file_handle' ], 
-                         chunk.string[ int( meta[ 'start_in_chunk' ] ) : int( meta[ 'end_in_chunk' ] ) + 1 ], 
-                         write_directory,
-                         object_path )
-       
+    for row in rows:
+      perms = dict( zip( headers, row ) )
+      if self.verbose:
+        print( 'unchunking ' + perms[ 'file_handle' ] + ' ...' )
+      ### PROBLEM AT THE MOMENT IS GETING THE FILE PIECES OF A CHUNK
+      self.unchunk_file( join( write_directory, perms[ 'file_handle' ] ), chunk.string[
 
-  def unchunk_file( self, file_handle, file_part, write_directory, rel_path ):
-    meta = self.meta_db.fill_dicts_from_db( [], { 'file_handle': file_handle }, self.meta_db.FILE_TABLE ).pop() 
-    ensure_path( join( write_directory, relpath( meta[ 'file_path' ], rel_path ) ) )
+
+
+  def unchunk_file( self, write_handle, file_part, permissions ):
      
     if self.verbose:
       print( 'unchunking ' + file_handle + ' ...' )
@@ -341,7 +338,7 @@ class Unchunker ( Process ):
     file = open( write_handle, 'wb' )
     file.write( file_part )     
     file.close()
-    self.__restore_meta_data__( write_handle, meta )
+    self.__restore_permissions__( write_handle, permissions )
 
 
   def unchunk_symlink( self, write_handle, link_dest ):
@@ -356,7 +353,7 @@ class Unchunker ( Process ):
     if self.verbose:
       print( 'unchunking directory ' + write_handle + ' ...' )
    
-    self.__restore_meta_data__( write_handle, permissions )     
+    self.__restore_permissions__( write_handle, permissions )     
  
 
   def unchunk( self, write_directory, object_path, db_entry, type ):
