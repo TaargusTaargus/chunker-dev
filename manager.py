@@ -15,12 +15,12 @@ class Manager( object ):
     self.total = total_procs
     self.counter = 0 
     for np in range( total_procs ):
-      self.proc_list[ np ] = self.init_proc( np )
+      self.proc_list[ np ] = self.__init_proc__( np )
 
-  def init_proc( self, proc_num ):
+  def __init_proc__( self, proc_num ):
     return None
 
-  def finish( self, proc ):
+  def __finish__( self, proc ):
     return None
 
   def run( self ):
@@ -30,7 +30,7 @@ class Manager( object ):
     while self.proc_list:
       proc = self.proc_list.pop( 0 )
       if not proc.is_alive():
-        self.finish( proc )
+        self.__finish__( proc )
       else:
         self.proc_list.append( proc ) 
    
@@ -44,7 +44,7 @@ class UploadManager( Manager ):
     self.fs = None
     Manager.__init__( self, total_procs )
 
-  def init_proc( self, np ):
+  def __init_proc__( self, np ):
     p_db = ChunkDB( self.db.db_name + str( np ) )
     storage = Storage( self.cred.get_client() )
     return Chunker( p_db, storage )
@@ -58,12 +58,12 @@ class UploadManager( Manager ):
     self.counter = ( self.counter + 1 ) % self.total
 
  
-  def finish( self, proc ):
+  def __finish__( self, proc ):
     self.db.copy_other_db( proc.meta_db )
     remove( proc.meta_db.db_name )
 
 
-  def upload( self, read_path ):
+  def upload( self, read_path, write_dir ):
     #find all files within a directory, ignoring any existing chunk or metadata files
     all_files = []
     self.fs = Filesystem( self.cred.get_client(), basename( normpath( read_path ) ) )
@@ -100,12 +100,12 @@ class DownloadManager( Manager ):
     Manager.__init__( self, total_procs )
 
 
-  def init_proc( self, np ):
+  def __init_proc__( self, np ):
     storage = Storage( self.cred.get_client() )
     return Unchunker( self.db, storage )
 
    
-  def __load__( self, base_dir, write_dir, chunk ):
+  def __load_chunk__( self, base_dir, write_dir, chunk ):
     chunkid = chunk[ 'id' ]
     try:
       entry = self.db.fill_dicts_from_db( [ 'encoding', 'hash_key', 'init_vec' ], { "chunk_id": chunkid }, ChunkDB.CHUNK_TABLE, entries=1 ).pop()
@@ -126,7 +126,7 @@ class DownloadManager( Manager ):
     ensure_path( abspath( read_path ) )
   
 		### filesystem only handles remote now
-    ### download does not write to database     
+    ### download does not write to database 
     for path, id, files, dirs in dwalk( self.cred.get_client(), fs.dirs[ read_path ]  ):
       abs_path = join( read_path, path )   
  
@@ -134,13 +134,6 @@ class DownloadManager( Manager ):
         ensure_path( abs_path )
    
       for file in files:
-        self.__load__( write_dir, abs_path, file )
-
-      
-      print( "root: " + path ) 
-      print( "files:" )
-      print( [ e[ 'title' ] for e in files ] )
-      print( "dirs:" )
-      print( [ e[ 'title' ] for e in dirs ] )
-   
+        self.__load_chunk__( write_dir, abs_path, file ) 
+           
     self.run()

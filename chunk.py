@@ -26,14 +26,15 @@ class Chunk:
  
   def concatenate( self, file_handle, str ):
     self.string += str
-    
+ 
     meta = {}
-    
+
     meta[ 'file_handle' ] = file_handle
     meta[ 'start_in_chunk' ] = self.used
-    meta[ 'end_in_chunk' ] = self.used + len( str ) - 1  
-    self.meta.append( meta )   
+    meta[ 'end_in_chunk' ] = self.used + len( str ) - 1 
+    self.meta.append( meta ) 
     self.used += len( str )
+
 
   def encode( self, charset=getdefaultencoding() ):
     try:
@@ -42,6 +43,7 @@ class Chunk:
       self.string = b64encode( self.string )
       charset = "b64"
     return charset
+
 
   def decode( self, encoding ):
     if encoding == "b64":
@@ -52,6 +54,7 @@ class Chunk:
       except:
         print( "WARNING: encountered issue encoding " + self.chunk_name + " contents might be corrupted ... " )
         self.string = self.string.encode( encoding, "replace" )
+
 
   def encrypt( self, key, iv ):
     encryptor = AES.new( key, AES.MODE_CBC, iv )
@@ -101,7 +104,6 @@ class Chunker( Process ):
                                       'file_group' : file_stats.st_gid,
                                       'file_mod_time': file_stats.st_mtime }, self.meta_db.PERMISSIONS_TABLE )
  
-
 
   def write_chunk( self, chunk_dir ):
     if not self.curr:
@@ -163,8 +165,7 @@ class Chunker( Process ):
 
     if self.verbose:
       print( "chunking file " + read_handle + " ..." )
-  
- 
+   
     # record permissions
     self.__record_permissions__( file_handle, file_stats )
              
