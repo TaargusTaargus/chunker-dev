@@ -17,11 +17,14 @@ class Manager( object ):
     for np in range( total_procs ):
       self.proc_list[ np ] = self.__init_proc__( np )
 
+
   def __init_proc__( self, proc_num ):
     return None
 
+
   def __finish__( self, proc ):
     return None
+
 
   def run( self ):
     for proc in self.proc_list:
@@ -44,10 +47,12 @@ class UploadManager( Manager ):
     self.fs = None
     Manager.__init__( self, total_procs )
 
+
   def __init_proc__( self, np ):
     p_db = ChunkDB( self.db.db_name + str( np ) )
     storage = Storage( self.cred.get_client() )
     return Chunker( p_db, storage )
+
    
   def __load__( self, file_name, abs_path, fpair ):
     try:
@@ -91,6 +96,7 @@ class UploadManager( Manager ):
     self.run() 
 
 
+
 class DownloadManager( Manager ):
   
   def __init__( self, credentials, db_name=None, total_procs=1 ):
@@ -115,12 +121,12 @@ class DownloadManager( Manager ):
       entry = None
       file_entries = None
     self.proc_list[ self.counter ].queue_chunk( chunk, write_dir, entry, file_entries )
-    self.counter = ( self.counter + 1 ) % self.total   
+    self.counter = ( self.counter + 1 ) % self.total 
 
 
   def download( self, read_path, write_dir=None ):
     #find all files within a directory, ignoring any existing chunk or metadata files
-    fs = Filesystem( self.cred.get_client(), read_path ) 
+    fs = Filesystem( self.cred.get_client(), read_path )
     write_dir = write_dir if write_dir else read_path
     all_files = []
     ensure_path( abspath( read_path ) )

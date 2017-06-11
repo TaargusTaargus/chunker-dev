@@ -24,21 +24,23 @@ def usage():
                   specify the database file to write to/read from
                 -v, --verbose
                   more verbose output from chunk
-                -w [WRITE-DIR]
+                -w write-dir
                   directory to write uploaded/downloaded files to (defaults to [DIR])
-              UPLOAD OPTIONS:
                 -t # of threads
-                  request threading with specified total threads spawned 
+                  request threading with specified number of threads
+                -cf, --collapse
+                  collapse the filesystem on upload
+            
+
+              UPLOAD OPTIONS:
                 -e, --encrypt
                   enable encryption
                 -c size
                   chunk all files within [size] byte chunks
-                -cf, --collapse
-                  collapse the filesystem on upload
                 -f, --force
                   forces  reupload
                 -a, --fast
-                  fastest mode for upload (turns on -cf, -c 10000000, -t #ofcpus)
+                  fastest mode for upload (-cf -c 10000000)
 									
      ''' )
 
@@ -191,7 +193,7 @@ if mode == 'upload' or mode == 'download':
     uploader.upload( argv[ -1 ], writedir )
   elif mode == 'download': 
     downloader = DownloadManager( credentials, database_name, thread_count )  
-    downloader.download( argv[ -1 if argc == 3 else -2 ], writedir )
+    downloader.download( argv[ -1 ], writedir )
 
 #if user wants to list chunked files
 elif mode == 'ls-all':
