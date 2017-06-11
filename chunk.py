@@ -282,7 +282,7 @@ class Unchunker ( Process ):
     self.storage = storage
 
     # queueing for parallelism
-    self.queue = []
+    self.queue = { 'chunks': [], 'dirs': [], 'links': [] }
 
 
   def __restore_permissions__( self, handle, meta ):
@@ -301,35 +301,35 @@ class Unchunker ( Process ):
 
   def read_chunk( self, chunk_entry, write_directory, chunk_file_table ):
     chunk = Chunk()
-    if chunk_entry[ 'chunkid' ] == EMPTY_CHUNK_NAME:
+
+    print( chunk_entry )
+    print( chunk_file_table )
+
+    if chunk_entry[ 'chunk_id' ] == EMPTY_CHUNK_NAME:
       chunk.string = "~"
     else:
-      chunk.string = self.storage.read_chunk( chunk_entry[ 'chunkid' ] )  
+      chunk.string = self.storage.read_chunk( chunk_entry[ 'chunk_id' ] )  
 
-    if len( file_entries ) > 0:
+    if len( chunk_file_table ) > 0:
       chunk.decode( chunk_entry[ 'encoding' ] )
       if chunk_entry[ 'hash_key' ] and chunk_entry[ 'init_vec' ]:
         chunk.decrypt( chunk_entry[ 'hash_key' ], chunk_entry[ 'init_vec' ] )  
     else:
-      print( "WARNING: was unable to retrieve file information on " + chunk_entry[ 'chunkid' ] + " ..." )
+      print( "WARNING: was unable to retrieve file information on " + chunk_entry[ 'chunk_id' ] + " ..." )
   
-    headers, rows = chunk_file_entries
+    headers, rows = chunk_file_table
 
     for row in rows:
       perms = dict( zip( headers, row ) )
       if self.verbose:
         print( 'unchunking ' + perms[ 'file_handle' ] + ' ...' )
-      ### PROBLEM AT THE MOMENT IS GETING THE FILE PIECES OF A CHUNK
-      self.unchunk_file( join( write_directory, perms[ 'file_handle' ] ), chunk.string[
-
+    
+      write_handle = join( write_directory, perms[ 'file_handle' ] )
+      file_part = chunk.string[ int( perms[ 'start_in_chunk' ] ) : int( perms[ 'end_in_chunk' ] ) ]
+      self.unchunk_file( write_handle, file_part, perms )
 
 
   def unchunk_file( self, write_handle, file_part, permissions ):
-     
-    if self.verbose:
-      print( 'unchunking ' + file_handle + ' ...' )
-
-    write_handle = join( write_directory, relpath( file_handle, rel_path ) )
     if isfile( write_handle ):
       file = open( write_handle, 'rb' )
       file_part = file.read() + file_part
@@ -349,48 +349,32 @@ class Unchunker ( Process ):
 
 
   def unchunk_directory( self, write_handle, permissions ):
-
     if self.verbose:
       print( 'unchunking directory ' + write_handle + ' ...' )
    
     self.__restore_permissions__( write_handle, permissions )     
- 
 
-  def unchunk( self, write_directory, object_path, db_entry, type ):
-   
-    # first create all folders and directores, and add permission to files
-    if type == 'file':
-      self.read_chunk( db_entry, write_directory, object_path )
- 
-    # create all symlinks
-    if type == 'link':
-      link_path, link_handle, link_dest = db_entry
-      link_path = relpath( link_path, object_path ) 
-      self.unchunk_symlink( link_handle, join( write_directory, relpath( link_handle, object_path ) ), link_dest )
 
-    # place permissions onto folders after everything is created
-    if type == 'directory':
-      directory_path = db_entry
-      write_file_path = join( write_directory, relpath( directory_path, object_path ) )
-      self.unchunk_directory( directory_path, write_file_path )
- 
-
-  def __queue_chunk__( self, chunk_name, write_directory, permissions ):
-    return
+  def queue_chunk( self, chunk_entry, write_directory, file_chunk_entries ):
+    self.queue[ 'chunks' ].append( ( chunk_entry, write_directory, file_chunk_entries ) ) 
     
   
-  def __queue_dir__( self, dir_handle, permissions ):
+  def queue_dir( self, dir_handle, permissions ):
     self.queue[ 'dirs' ].append( ( dir_handle, permissions ) )
 
 
-  def __queue_link__( self, write_handle, link_dest ):
-    self.queue[ 'links' ].append( ( write_handle, link_dest ) ) 
-
- 
-  def queue( self, write_dir, object_path, db_entry, type ):
-    self.queue.append( ( write_dir, object_path, db_entry, type ) )
+  def queue_link( self, link_handle, link_dest ):
+    self.queue[ 'links' ].append( ( link_handle, link_dest ) ) 
 
 
   def run( self ):
-    for wdir, path, entry, type in self.queue:
-      unchunk( wdir, path, entry, type ) 
+    for centry, wdir, fcentries in self.queue[ 'chunks' ]:
+      self.read_chunk( centry, wdir, fcentries )
+
+    for lhandle, ldest in self.queue[ 'links' ]:
+      self.unchunk_symlink( lhandle, ldest )
+
+    for dhande, perms in self.queue[ 'dirs' ]:
+      self.unchunk_directory( dhandle, perms )
+
+

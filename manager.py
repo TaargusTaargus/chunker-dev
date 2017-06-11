@@ -20,14 +20,20 @@ class Manager( object ):
   def init_proc( self, proc_num ):
     return None
 
-  def wait( self ):
+  def finish( self, proc ):
     return None
 
   def run( self ):
     for proc in self.proc_list:
       proc.start()
-    self.wait()
-
+    
+    while self.proc_list:
+      proc = self.proc_list.pop( 0 )
+      if not proc.is_alive():
+        self.finish( proc )
+      else:
+        self.proc_list.append( proc ) 
+   
 
 
 class UploadManager( Manager ):
@@ -50,15 +56,12 @@ class UploadManager( Manager ):
       entry = None
     self.proc_list[ self.counter ].queue( file_name, abs_path, fpair, entry )
     self.counter = ( self.counter + 1 ) % self.total
+
  
-  def wait( self ):
-    while len( self.proc_list ):
-      proc = self.proc_list.pop( 0 )
-      if not proc.is_alive():
-        self.db.copy_other_db( proc.meta_db )
-        remove( proc.meta_db.db_name )
-      else:
-        self.proc_list.append( proc )
+  def finish( self, proc ):
+    self.db.copy_other_db( proc.meta_db )
+    remove( proc.meta_db.db_name )
+
 
   def upload( self, read_path ):
     #find all files within a directory, ignoring any existing chunk or metadata files
@@ -102,43 +105,32 @@ class DownloadManager( Manager ):
     return Unchunker( self.db, storage )
 
    
-  def __load__( self, file_name, abs_path, fpair ):
+  def __load__( self, write_dir, chunkid ):
     try:
-      entry = self.db.fill_dicts_from_db( [ '*' ], { "file_handle": join( fpair.fsource, file_name ) }, ChunkDB.FILE_TABLE, entries=1 ).pop()
+      entry = self.db.fill_dicts_from_db( [ 'chunk_id', 'encoding', 'hash_key', 'init_vec' ], { "chunk_id": chunkid }, ChunkDB.CHUNK_TABLE, entries=1 ).pop()
     except:
       entry = None
-    self.proc_list[ self.counter ].to_chunk( file_name, abs_path, fpair, entry )
-    self.counter = ( self.counter + 1 ) % self.total
-
- 
-  def wait( self ):
-    while len( self.proc_list ):
-      proc = self.proc_list.pop( 0 )
-      if not proc.is_alive():
-        proc.meta_db.list_all_files()
-        self.db.copy_other_db( proc.meta_db )
-        remove( proc.meta_db.db_name )
-      else:
-        self.proc_list.append( proc )
+    self.proc_list[ self.counter ].queue_chunk( entry, write_dir, self.db.get_chunk_file_entries( chunkid ) )
+    self.counter = ( self.counter + 1 ) % self.total   
 
 
   def download( self, read_path, write_dir=None ):
     #find all files within a directory, ignoring any existing chunk or metadata files
+    fs = Filesystem( self.cred.get_client(), read_path ) 
     write_dir = write_dir if write_dir else read_path
     all_files = []
-    read_path = abspath( read_path )
-    ensure_path( read_path )
+    ensure_path( abspath( read_path ) )
   
 		### filesystem only handles remote now
     ### download does not write to database     
-    
-    for path, id, files, dirs in dwalk( self.cred.get_client(), read_path ):
+    for path, id, files, dirs in dwalk( self.cred.get_client(), fs.dirs[ read_path ]  ):
       abs_path = join( read_path, path )   
    
       if not flags[ 'collapse_flag' ] and path:
         ensure_path( abs_path )
-        for dir in dirs:
-          pair = FilePair( id, abs_path )
+   
+      for file in files:
+        self.__load__( write_dir, file[ 'id' ] )
 
       
       print( "root: " + path ) 
@@ -146,3 +138,5 @@ class DownloadManager( Manager ):
       print( [ e[ 'title' ] for e in files ] )
       print( "dirs:" )
       print( [ e[ 'title' ] for e in dirs ] )
+   
+    self.run()

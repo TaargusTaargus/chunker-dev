@@ -85,20 +85,12 @@ class ChunkDB:
     self.cursor.execute( 'DELETE FROM ' + self.CHUNK_TABLE + " WHERE file_handle='" + file_handle + "'" )
     self.meta_db.commit()
 
-  
-  def get_chunk_entries( self, chunk_id, object_path ):
-    entries = self.cursor.execute( 'SELECT * FROM ' + self.CHUNK_TABLE
-                                   + " WHERE chunk_id='" + chunk_id + "'"
-                                   + " AND file_handle LIKE '" + object_path + "%'"
-                                   + " ORDER BY start_in_chunk" ).fetchall()
-    return [ key[ 0 ] for key in self.cursor.description ], entries
 
-
-  def get_chunk_file_permissions( self, chunk_id ):
-    entries - self.cursor.execute( "SELECT pt.* FROM " + self.CHUNK_TABLE
+  def get_chunk_file_entries( self, chunk_id ):
+    entries = self.cursor.execute( "SELECT ct.start_in_chunk, ct.end_in_chunk, pt.* FROM " + self.CHUNK_TABLE
                                    + " ct INNER JOIN " + self.PERMISSIONS_TABLE 
                                    + " pt ON ct.file_handle = pt.file_handle"
-                                   + " WHERE ct.chunk_id = " + chunk_id ) 
+                                   + " WHERE ct.chunk_id = '" + chunk_id + "'" ).fetchall() 
     return [ key[ 0 ] for key in self.cursor.description ], entries
 
 
