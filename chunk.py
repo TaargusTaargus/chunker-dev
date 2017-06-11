@@ -299,37 +299,39 @@ class Unchunker ( Process ):
     utime( handle, ( float( meta[ 'file_mod_time' ] ), float( meta[ 'file_mod_time' ] ) ) )
 
 
-  def read_chunk( self, chunk_entry, write_directory, chunk_file_table ):
-    chunk = Chunk()
+  def read_chunk( self, chunk, write_directory, chunk_entry, chunk_file_table ):
+    unchunk = Chunk()
+    chunkid = chunk[ 'id' ]
 
-    print( chunk_entry )
-    print( chunk_file_table )
-
-    if chunk_entry[ 'chunk_id' ] == EMPTY_CHUNK_NAME:
-      chunk.string = "~"
+    if chunkid == EMPTY_CHUNK_NAME:
+      unchunk.string = "~"
     else:
-      chunk.string = self.storage.read_chunk( chunk_entry[ 'chunk_id' ] )  
+      unchunk.string = self.storage.read_chunk( chunkid )  
 
-    if len( chunk_file_table ) > 0:
-      chunk.decode( chunk_entry[ 'encoding' ] )
+    # if we don't have metadata on either chunk or file just write the file and terminate
+    if not chunk_entry and not chunk_file_table:
+      self.unchunk_file( join( write_directory, chunk[ 'title' ] ), unchunk.string )
+      return
+
+    if chunk_entry:
+      unchunk.decode( chunk_entry[ 'encoding' ] )
       if chunk_entry[ 'hash_key' ] and chunk_entry[ 'init_vec' ]:
-        chunk.decrypt( chunk_entry[ 'hash_key' ], chunk_entry[ 'init_vec' ] )  
-    else:
-      print( "WARNING: was unable to retrieve file information on " + chunk_entry[ 'chunk_id' ] + " ..." )
-  
+        unchunk.decrypt( chunk_entry[ 'hash_key' ], chunk_entry[ 'init_vec' ] )  
+
     headers, rows = chunk_file_table
 
     for row in rows:
       perms = dict( zip( headers, row ) )
       if self.verbose:
         print( 'unchunking ' + perms[ 'file_handle' ] + ' ...' )
-    
+     
       write_handle = join( write_directory, perms[ 'file_handle' ] )
-      file_part = chunk.string[ int( perms[ 'start_in_chunk' ] ) : int( perms[ 'end_in_chunk' ] ) ]
-      self.unchunk_file( write_handle, file_part, perms )
+      file_part = unchunk.string[ int( perms[ 'start_in_chunk' ] ) : int( perms[ 'end_in_chunk' ] ) ]
 
+      self.unchunk_file( write_handle, file_part )
+      self.__restore_permissions( write_handle, perms )
 
-  def unchunk_file( self, write_handle, file_part, permissions ):
+  def unchunk_file( self, write_handle, file_part ):
     if isfile( write_handle ):
       file = open( write_handle, 'rb' )
       file_part = file.read() + file_part
@@ -338,7 +340,6 @@ class Unchunker ( Process ):
     file = open( write_handle, 'wb' )
     file.write( file_part )     
     file.close()
-    self.__restore_permissions__( write_handle, permissions )
 
 
   def unchunk_symlink( self, write_handle, link_dest ):
@@ -355,8 +356,8 @@ class Unchunker ( Process ):
     self.__restore_permissions__( write_handle, permissions )     
 
 
-  def queue_chunk( self, chunk_entry, write_directory, file_chunk_entries ):
-    self.queue[ 'chunks' ].append( ( chunk_entry, write_directory, file_chunk_entries ) ) 
+  def queue_chunk( self, chunk, write_directory, chunk_entry, file_chunk_entries ):
+    self.queue[ 'chunks' ].append( ( chunk, write_directory, chunk_entry, file_chunk_entries ) ) 
     
   
   def queue_dir( self, dir_handle, permissions ):
@@ -368,8 +369,8 @@ class Unchunker ( Process ):
 
 
   def run( self ):
-    for centry, wdir, fcentries in self.queue[ 'chunks' ]:
-      self.read_chunk( centry, wdir, fcentries )
+    for chunk, wdir, centry, fcentries in self.queue[ 'chunks' ]:
+      self.read_chunk( chunk, wdir, centry, fcentries )
 
     for lhandle, ldest in self.queue[ 'links' ]:
       self.unchunk_symlink( lhandle, ldest )

@@ -105,12 +105,16 @@ class DownloadManager( Manager ):
     return Unchunker( self.db, storage )
 
    
-  def __load__( self, write_dir, chunkid ):
+  def __load__( self, base_dir, write_dir, chunk ):
+    chunkid = chunk[ 'id' ]
     try:
-      entry = self.db.fill_dicts_from_db( [ 'chunk_id', 'encoding', 'hash_key', 'init_vec' ], { "chunk_id": chunkid }, ChunkDB.CHUNK_TABLE, entries=1 ).pop()
+      entry = self.db.fill_dicts_from_db( [ 'encoding', 'hash_key', 'init_vec' ], { "chunk_id": chunkid }, ChunkDB.CHUNK_TABLE, entries=1 ).pop()
+      file_entries = self.db.get_chunk_file_entries( chunkid )
+      write_dir = base_dir
     except:
       entry = None
-    self.proc_list[ self.counter ].queue_chunk( entry, write_dir, self.db.get_chunk_file_entries( chunkid ) )
+      file_entries = None
+    self.proc_list[ self.counter ].queue_chunk( chunk, write_dir, entry, file_entries )
     self.counter = ( self.counter + 1 ) % self.total   
 
 
@@ -125,12 +129,12 @@ class DownloadManager( Manager ):
     ### download does not write to database     
     for path, id, files, dirs in dwalk( self.cred.get_client(), fs.dirs[ read_path ]  ):
       abs_path = join( read_path, path )   
-   
+ 
       if not flags[ 'collapse_flag' ] and path:
         ensure_path( abs_path )
    
       for file in files:
-        self.__load__( write_dir, file[ 'id' ] )
+        self.__load__( write_dir, abs_path, file )
 
       
       print( "root: " + path ) 
