@@ -51,7 +51,7 @@ class UploadManager( Manager ):
   def __init_proc__( self, np ):
     p_db = ChunkDB( self.db.db_name + str( np ) )
     storage = Storage( self.cred.get_client() )
-    return Chunker( p_db, storage )
+    return Chunker( storage, p_db )
 
    
   def __load__( self, file_name, abs_path, fpair ):
@@ -126,15 +126,17 @@ class DownloadManager( Manager ):
 
   def download( self, read_path, write_dir=None ):
     #find all files within a directory, ignoring any existing chunk or metadata files
+    
+    print( write_dir )
     fs = Filesystem( self.cred.get_client(), read_path )
     write_dir = write_dir if write_dir else read_path
     all_files = []
-    ensure_path( abspath( read_path ) )
+    ensure_path( abspath( write_dir ) )
   
 		### filesystem only handles remote now
     ### download does not write to database 
     for path, id, files, dirs in dwalk( self.cred.get_client(), fs.dirs[ read_path ]  ):
-      abs_path = join( read_path, path )   
+      abs_path = join( write_dir, path )   
  
       if not flags[ 'collapse_flag' ] and path:
         ensure_path( abs_path )

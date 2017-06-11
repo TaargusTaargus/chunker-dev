@@ -75,7 +75,7 @@ class Chunker( Process ):
 
   CHUNK_EXTENSION='.chk'
   
-  def __init__( self, db, storage ):
+  def __init__( self, storage, db=None ):
     # threading related stuff
     Process.__init__( self )
     self.chunk_queue = { 'dir': [], 'file': [], 'link': [] }
@@ -129,8 +129,8 @@ class Chunker( Process ):
       e[ 'encoding' ] = encoding
       self.meta_db.fill_db_from_dict( e, self.meta_db.CHUNK_TABLE )
 
-      self.chunk_count += 1
-      self.curr = Chunk( str( self.chunk_count ) + '-' + str( self.pid ) + self.CHUNK_EXTENSION ) 
+    self.chunk_count += 1
+    self.curr = Chunk( str( self.chunk_count ) + '-' + str( self.pid ) + self.CHUNK_EXTENSION ) 
       
      
   def chunk_file( self, read_handle, fpair, file_name, entry ): 
