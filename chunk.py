@@ -216,7 +216,7 @@ class Chunker( Process ):
     try:
       file_stats = stat( read_handle )
       self.__record_permissions__( rel_handle, file_stats )
-      meta = { 'directory_path' : rel_handle }
+      meta = { 'directory_handle' : rel_handle }
     except:
       print( "ERROR: unable to find statistics on " + read_handle + ", skipping ..." )
       return         
@@ -330,7 +330,7 @@ class Unchunker ( Process ):
       file_part = unchunk.string[ int( perms[ 'start_in_chunk' ] ) : int( perms[ 'end_in_chunk' ] ) ]
 
       self.unchunk_file( write_handle, file_part )
-      self.__restore_permissions( write_handle, perms )
+      self.__restore_permissions__( write_handle, perms )
 
   def unchunk_file( self, write_handle, file_part ):
     if isfile( write_handle ):

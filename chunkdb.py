@@ -36,7 +36,7 @@ class ChunkDB:
 
     if self.DIRECTORY_TABLE not in tables:
       self.cursor.execute( "CREATE TABLE " + self.DIRECTORY_TABLE
-                             + ''' ( directory_path text, UNIQUE( directory_path ) ) ''' )
+                             + ''' ( directory_handle text, UNIQUE( directory_handle ) ) ''' )
 
     if self.SYMLINK_TABLE not in tables:
       self.cursor.execute( "CREATE TABLE " + self.SYMLINK_TABLE
@@ -94,6 +94,13 @@ class ChunkDB:
     return [ key[ 0 ] for key in self.cursor.description ], entries
 
 
+  def get_all_directory_permissions( self ):
+    entries = self.cursor.execute( "SELECT pt.* FROM " + self.DIRECTORY_TABLE
+                                   + " dt INNER JOIN " + self.PERMISSIONS_TABLE
+                                   + " pt ON dt.directory_handle = pt.file_handle" ).fetchall()
+    return [ key[ 0 ] for key in self.cursor.description ], entries 
+
+
   def get_related_chunks( self, file_path='' ):
     return self.cursor.execute( 'SELECT DISTINCT chunk_id FROM ' + self.CHUNK_TABLE 
                                 + " WHERE file_handle LIKE '" + file_path + "%'"
@@ -104,7 +111,7 @@ class ChunkDB:
     return self.get_objects_from_db( cols, where, self.SYMLINK_TABLE, like )
 
 
-  def get_related_directories( self, cols=[ 'directory_path' ], where={ 'directory_path': '' }, like=True ):
+  def get_related_directories( self, cols=[ 'directory_handle' ], where={ 'directory_handle': '' }, like=True ):
     return self.get_objects_from_db( cols, where, self.DIRECTORY_TABLE, like )
 
 

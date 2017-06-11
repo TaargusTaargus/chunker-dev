@@ -11,10 +11,13 @@ from utilities import dwalk, ensure_path
 class Manager( object ):
 
   def __init__( self, total_procs ):
-    self.proc_list = [ None ] * total_procs
     self.total = total_procs
-    self.counter = 0 
-    for np in range( total_procs ):
+    self.counter = 0
+    self.init()
+  
+  def init( self ):
+    self.proc_list = [ None ] * self.total
+    for np in range( self.total ):
       self.proc_list[ np ] = self.__init_proc__( np )
 
 
@@ -24,6 +27,12 @@ class Manager( object ):
 
   def __finish__( self, proc ):
     return None
+
+
+  def next( self ):
+    ret = self.proc_list[ self.counter ]
+    self.counter = ( self.counter + 1 ) % self.total
+    return ret
 
 
   def run( self ):
@@ -59,8 +68,7 @@ class UploadManager( Manager ):
       entry = self.db.fill_dicts_from_db( [ '*' ], { "file_handle": join( fpair.fsource, file_name ) }, ChunkDB.FILE_TABLE, entries=1 ).pop()
     except:
       entry = None
-    self.proc_list[ self.counter ].queue( file_name, abs_path, fpair, entry )
-    self.counter = ( self.counter + 1 ) % self.total
+    self.next().queue( file_name, abs_path, fpair, entry )
 
  
   def __finish__( self, proc ):
@@ -120,14 +128,10 @@ class DownloadManager( Manager ):
     except:
       entry = None
       file_entries = None
-    self.proc_list[ self.counter ].queue_chunk( chunk, write_dir, entry, file_entries )
-    self.counter = ( self.counter + 1 ) % self.total 
-
+    self.next().queue_chunk( chunk, write_dir, entry, file_entries )
 
   def download( self, read_path, write_dir=None ):
     #find all files within a directory, ignoring any existing chunk or metadata files
-    
-    print( write_dir )
     fs = Filesystem( self.cred.get_client(), read_path )
     write_dir = write_dir if write_dir else read_path
     all_files = []
@@ -143,5 +147,5 @@ class DownloadManager( Manager ):
    
       for file in files:
         self.__load_chunk__( write_dir, abs_path, file ) 
-           
+       
     self.run()
