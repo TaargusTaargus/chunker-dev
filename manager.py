@@ -119,33 +119,65 @@ class DownloadManager( Manager ):
     return Unchunker( self.db, storage )
 
    
-  def __load_chunk__( self, base_dir, write_dir, chunk ):
-    chunkid = chunk[ 'id' ]
+  def __load_chunk__( self, write_dir, chunkid ):
     try:
       entry = self.db.fill_dicts_from_db( [ 'encoding', 'hash_key', 'init_vec' ], { "chunk_id": chunkid }, ChunkDB.CHUNK_TABLE, entries=1 ).pop()
       file_entries = self.db.get_chunk_file_entries( chunkid )
-      write_dir = base_dir
     except:
       entry = None
       file_entries = None
-    self.next().queue_chunk( chunk, write_dir, entry, file_entries )
+    self.next().queue_chunk( chunkid, write_dir, entry, file_entries )
 
-  def download( self, read_path, write_dir=None ):
+  def __load_dir__( self, dbentry ):
+    print( dbentry )
+    self.next().queue_dir( dbentry[ 'file_handle' ], dbentry )
+
+  def __load_link__( self, dbentry ):
+    self.next().queue_link( dbentry[ 'link_handle' ], dbentry[ 'link_dest' ] )
+    
+
+## download that does not require a db
+
+#  def download( self, read_path, write_dir=None ):
+#    #find all files within a directory, ignoring any existing chunk or metadata files
+#    fs = Filesystem( self.cred.get_client(), read_path )
+#    write_dir = write_dir if write_dir else read_path
+#    all_files = []
+#    ensure_path( abspath( write_dir ) )
+#  
+#		### filesystem only handles remote now
+#   ### download does not write to database 
+#   for path, id, files, dirs in dwalk( self.cred.get_client(), fs.dirs[ read_path ]  ):
+#      abs_path = join( write_dir, path )   
+ 
+#      if not flags[ 'collapse_flag' ] and path:
+#        ensure_path( abs_path )
+   
+#      for file in files:
+#        self.__load_chunk__( write_dir, abs_path, file ) 
+       
+#    self.run()
+
+  def download( self, write_dir, read_path=None ):
     #find all files within a directory, ignoring any existing chunk or metadata files
-    fs = Filesystem( self.cred.get_client(), read_path )
     write_dir = write_dir if write_dir else read_path
     all_files = []
     ensure_path( abspath( write_dir ) )
-  
-		### filesystem only handles remote now
-    ### download does not write to database 
-    for path, id, files, dirs in dwalk( self.cred.get_client(), fs.dirs[ read_path ]  ):
-      abs_path = join( write_dir, path )   
  
-      if not flags[ 'collapse_flag' ] and path:
-        ensure_path( abs_path )
-   
-      for file in files:
-        self.__load_chunk__( write_dir, abs_path, file ) 
-       
+    for entry in self.db.fill_dicts_from_db( [ 'directory_handle' ], None, ChunkDB.DIRECTORY_TABLE ):
+      ensure_path( join( write_dir, entry[ 'directory_handle' ] ) )
+
+    for entry in self.db.fill_dicts_from_db( [ 'chunk_id' ], None, ChunkDB.CHUNK_TABLE ):
+      self.__load_chunk__( write_dir, entry[ 'chunk_id' ] )
+
+    for entry in self.db.fill_dicts_from_db( [ '*' ], None, ChunkDB.SYMLINK_TABLE ):
+      self.__load_link__( entry )
+
     self.run()
+    self.init()
+    
+    keys, entries = self.db.get_all_directory_permissions()
+    for entry in entries:
+      self.__load_dir__( dict( zip( keys, entry ) ) )
+
+

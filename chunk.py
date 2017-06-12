@@ -300,9 +300,8 @@ class Unchunker ( Process ):
     utime( handle, ( float( meta[ 'file_mod_time' ] ), float( meta[ 'file_mod_time' ] ) ) )
 
 
-  def read_chunk( self, chunk, write_directory, chunk_entry, chunk_file_table ):
+  def read_chunk( self, chunkid, write_directory, chunk_entry, chunk_file_table ):
     unchunk = Chunk()
-    chunkid = chunk[ 'id' ]
 
     if chunkid == EMPTY_CHUNK_NAME:
       unchunk.string = "~"
@@ -310,9 +309,9 @@ class Unchunker ( Process ):
       unchunk.string = self.storage.read_chunk( chunkid )  
 
     # if we don't have metadata on either chunk or file just write the file and terminate
-    if not chunk_entry and not chunk_file_table:
-      self.unchunk_file( join( write_directory, chunk[ 'title' ] ), unchunk.string )
-      return
+    #if not chunk_entry and not chunk_file_table:
+    #  self.unchunk_file( join( write_directory, chunk[ 'title' ] ), unchunk.string )
+    #  return
 
     if chunk_entry:
       unchunk.decode( chunk_entry[ 'encoding' ] )
@@ -327,7 +326,7 @@ class Unchunker ( Process ):
         print( 'unchunking ' + perms[ 'file_handle' ] + ' ...' )
      
       write_handle = join( write_directory, perms[ 'file_handle' ] )
-      file_part = unchunk.string[ int( perms[ 'start_in_chunk' ] ) : int( perms[ 'end_in_chunk' ] ) ]
+      file_part = unchunk.string[ int( perms[ 'start_in_chunk' ] ) : int( perms[ 'end_in_chunk' ] ) + 1 ]
 
       self.unchunk_file( write_handle, file_part )
       self.__restore_permissions__( write_handle, perms )

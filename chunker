@@ -193,7 +193,7 @@ if mode == 'upload' or mode == 'download':
     uploader.upload( argv[ -1 ], writedir )
   else: 
     downloader = DownloadManager( credentials, database_name, thread_count )  
-    downloader.download( argv[ -1 ], writedir )
+    downloader.download( argv[ -1 ]  )
 
 #if user wants to list chunked files
 elif mode == 'ls-all':
