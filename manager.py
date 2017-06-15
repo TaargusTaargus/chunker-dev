@@ -95,10 +95,10 @@ class UploadManager( Manager ):
 
         if not flags[ 'collapse_flag' ] and rel:
           self.fs.mkdir( rel )
-          for dir in dirs:
-            self.__load__( dir, root, self.fs.get_filepair( rel ) )
+          #for dir in dirs:
+          #  self.__load__( dir, root, self.fs.get_filepair( rel ) )
 
-        for file in files:
+        for file in files + dirs:
           self.__load__( file, root, self.fs.get_filepair( rel ) )
 
     self.run() 
@@ -128,12 +128,11 @@ class DownloadManager( Manager ):
       file_entries = None
     self.next().queue_chunk( chunkid, write_dir, entry, file_entries )
 
-  def __load_dir__( self, dbentry ):
-    print( dbentry )
-    self.next().queue_dir( dbentry[ 'file_handle' ], dbentry )
+  def __load_dir__( self, dbentry, wdir ):
+    self.next().queue_dir( join( wdir, dbentry[ 'file_handle' ] ), dbentry )
 
-  def __load_link__( self, dbentry ):
-    self.next().queue_link( dbentry[ 'link_handle' ], dbentry[ 'link_dest' ] )
+  def __load_link__( self, dbentry, wdir ):
+    self.next().queue_link( join( wdir, dbentry[ 'link_handle' ] ), dbentry[ 'link_dest' ] )
     
 
 ## download that does not require a db
@@ -171,13 +170,13 @@ class DownloadManager( Manager ):
       self.__load_chunk__( write_dir, entry[ 'chunk_id' ] )
 
     for entry in self.db.fill_dicts_from_db( [ '*' ], None, ChunkDB.SYMLINK_TABLE ):
-      self.__load_link__( entry )
+      self.__load_link__( entry, write_dir )
 
     self.run()
     self.init()
     
     keys, entries = self.db.get_all_directory_permissions()
     for entry in entries:
-      self.__load_dir__( dict( zip( keys, entry ) ) )
-
+      self.__load_dir__( dict( zip( keys, entry ) ), write_dir )
+    self.run()
 

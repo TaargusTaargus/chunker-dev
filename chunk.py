@@ -375,7 +375,7 @@ class Unchunker ( Process ):
     for lhandle, ldest in self.queue[ 'links' ]:
       self.unchunk_symlink( lhandle, ldest )
 
-    for dhande, perms in self.queue[ 'dirs' ]:
+    for dhandle, perms in self.queue[ 'dirs' ]:
       self.unchunk_directory( dhandle, perms )
 
 
