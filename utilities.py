@@ -47,7 +47,7 @@ def persistent_try( function, args, description ):
       return function( *args )
     except Exception as e:
       if count == 0:
-        print( "ERROR: hit retry limit " + description + " with " + self.storage + " ... " )
+        print( "ERROR: hit retry limit " + description + " ... " )
         print( "REASON: " + str( e ) )
         return None
       else:

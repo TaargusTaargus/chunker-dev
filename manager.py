@@ -169,7 +169,7 @@ class DownloadManager( Manager ):
     for entry in self.db.fill_dicts_from_db( [ 'directory_handle' ], None, ChunkDB.DIRECTORY_TABLE ):
       ensure_path( join( write_dir, entry[ 'directory_handle' ] ) )
 
-    for entry in self.db.fill_dicts_from_db( [ 'chunk_id' ], None, ChunkDB.CHUNK_TABLE ):
+    for entry in self.db.fill_dicts_from_db( [ 'chunk_id' ], None, ChunkDB.CHUNK_TABLE, distinct=True ):
       self.__load_chunk__( write_dir, entry[ 'chunk_id' ] )
 
     for entry in self.db.fill_dicts_from_db( [ '*' ], None, ChunkDB.SYMLINK_TABLE ):

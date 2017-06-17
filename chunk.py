@@ -187,7 +187,7 @@ class Chunker( Process ):
     while file_size > 0:
 
       if self.curr.used >= self.chunk_size:
-        self.write_chunk()
+        self.write_chunk( fpair.fdest )
 
       n = self.chunk_size - self.curr.used if self.chunk_size - self.curr.used < file_size else file_size
       self.curr.concatenate( file_handle, file_contents[ cnt : ( cnt + n ) ] )
@@ -331,13 +331,9 @@ class Unchunker ( Process ):
       self.unchunk_file( write_handle, file_part )
       self.__restore_permissions__( write_handle, perms )
 
+
   def unchunk_file( self, write_handle, file_part ):
-    if isfile( write_handle ):
-      file = open( write_handle, 'rb' )
-      file_part = file.read() + file_part
-      file.close()
-    
-    file = open( write_handle, 'wb' )
+    file = open( write_handle, 'a' )
     file.write( file_part )     
     file.close()
 

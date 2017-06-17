@@ -66,19 +66,25 @@ class ChunkDB:
     self.cursor.execute( sql, dict.values() )
     self.meta_db.commit()  
 
-  def fill_dicts_from_db( self, keys, where, table_name, like=False, entries=None ):
-    results = self.get_objects_from_db( keys, where, table_name, like )
+  def fill_dicts_from_db( self, keys, where, table_name, like=False, entries=None, distinct=None ):
+    results = self.get_objects_from_db( keys, where, table_name, like, distinct=distinct )
     keys = [ key[ 0 ] for key in self.cursor.description ]
     return [ dict( zip( keys, result ) ) for result in ( results[ :entries] if entries else results ) ] 
 
 
-  def get_objects_from_db( self, keys, where, table_name, like ): 
+  def get_objects_from_db( self, keys, where, table_name, like, distinct=None ): 
     query_keys = ', '.join( keys ) if len( keys ) > 0 else '*' 
     if where:
       where_clause = ' WHERE ' + ' AND '.join( ( '%s' + ( ' LIKE ' if like else '=' ) + "'%s"  + ( "%%'" if like else "'" ) ) % e for e in zip( where.keys(), where.values() ) )  
     else:
       where_clause = ''
-    return self.cursor.execute( 'SELECT %s FROM %s %s' % ( query_keys, table_name, where_clause ) ).fetchall()
+    
+    if distinct:
+      distinct_clause = "DISTINCT"
+    else:
+      distinct_clause = ""
+
+    return self.cursor.execute( 'SELECT %s %s FROM %s %s' % ( distinct_clause, query_keys, table_name, where_clause ) ).fetchall()
 
  
   def delete_file_chunk_entries( self, file_handle ):
