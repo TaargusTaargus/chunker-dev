@@ -31,8 +31,6 @@ class Filesystem:
         if e.name == rel_path:
           flag = True
           root = e.id
-      if not flag:
-        print( "ERROR: was unable to find box directory " + rel_path + "..." )
     return root
 
 
@@ -46,7 +44,6 @@ class Filesystem:
           flag = True
           root = e[ 'id' ]
       if not flag:
-        print( "WARNING: was unable to find drive directory " + rel_path + ", creating new ..." )
         file = self.client.CreateFile( { 'title': rel_path, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [ { 'id': root } ] } )
         file.Upload()
         root = file[ 'id' ]
