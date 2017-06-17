@@ -36,16 +36,19 @@ class Manager( object ):
 
 
   def run( self ):
-    for proc in self.proc_list:
-      proc.start()
+    try:
+      for proc in self.proc_list:
+        proc.start()
     
-    while self.proc_list:
-      proc = self.proc_list.pop( 0 )
-      if not proc.is_alive():
-        self.__finish__( proc )
-      else:
-        self.proc_list.append( proc ) 
-   
+      while self.proc_list:
+        proc = self.proc_list.pop( 0 )
+        if not proc.is_alive():
+          self.__finish__( proc )
+        else:
+          self.proc_list.append( proc ) 
+    except:
+      print( "error! cleaning up ..." )
+      self.__finish__()
 
 
 class UploadManager( Manager ):
@@ -157,7 +160,7 @@ class DownloadManager( Manager ):
        
 #    self.run()
 
-  def download( self, write_dir, read_path=None ):
+  def download( self, write_dir, download_path=None ):
     #find all files within a directory, ignoring any existing chunk or metadata files
     write_dir = write_dir if write_dir else read_path
     all_files = []

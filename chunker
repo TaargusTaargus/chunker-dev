@@ -41,7 +41,7 @@ def usage():
                   forces  reupload
                 -a, --fast
                   fastest mode for upload (-cf -c 10000000)
-									
+								
      ''' )
 
 
@@ -120,11 +120,12 @@ if '-m' in argv:
 elif mode == 'ls-all':
   database_name = argv[ -1 ]
 
-if mode == 'upload':
-  if '-t' in argv:
-    thread_count = int( argv[ argv.index( '-t' ) + 1 ] )
-    argc -= 2
-  
+if '-t' in argv:
+  thread_count = int( argv[ argv.index( '-t' ) + 1 ] )
+  argc -= 2
+
+
+if mode == 'upload': 
   if '-c' in argv:
     flags[ 'chunk_size' ] = int( argv[ argv.index( '-c' ) + 1 ] )
     argc -= 2
