@@ -1,8 +1,8 @@
 #!/usr/bin/python
 from manager import UploadManager, DownloadManager
 from storage import Storage
-from chunkdb import ChunkDB
-from cred import Credentials
+from db import ChunkDB
+from auth import Credentials
 from warnings import simplefilter
 from os.path import isfile
 from sys import argv
@@ -12,12 +12,20 @@ from state import flags
 def usage(): 
   print( '''
                COMMANDS: 
+
+               chunker init USER
+
                chunker upload [OPTIONS...] DIR
+
                chunker download [OPTIONS...] DIR
-               chunker ls-all DB-NAME
+
+               chunker list DB-NAME
+
                chunker help COMMAND
 
+
               GENERAL OPTIONS:
+
                 -s mode
                   determines storage location: box, drive (default)
                 -m db
@@ -28,6 +36,9 @@ def usage():
                   directory to write uploaded/downloaded files to (defaults to [DIR])
                 -t # of threads
                   request threading with specified number of threads
+
+
+              UPLOAD ONLY OPTIONS:
                 -cf, --collapse
                   collapse the filesystem on upload
                 -e, --encrypt
@@ -64,7 +75,7 @@ def download_usage():
 
 def list_usage():
   print( '''
-              Usage: chunker ls-all DB-NAME
+              Usage: chunker list DB-NAME
 
               Command to list all chunked contents of a database
 
@@ -82,6 +93,16 @@ def help_usage():
          ''' )
 
 
+def init_usage():
+  print( '''
+              Usage: chunker init USER
+           
+              Command to add a user's drive to available filesystem space
+
+              [USER]      - user to be added
+         ''' )
+
+
 simplefilter( "ignore" )
 argc = len( argv )
 if argc == 1:
@@ -89,7 +110,7 @@ if argc == 1:
   exit( 0 )
 
 mode = argv[ 1 ]
-if mode not in [ 'download', 'upload', 'ls-all', 'help' ]:
+if mode not in [ 'download', 'upload', 'list', 'help' ]:
   usage()
   exit( 0 )
 
@@ -114,7 +135,7 @@ if '-v' in argv or '--verbose' in argv:
 if '-m' in argv:
   database_name = argv[ argv.index( '-m' ) + 1 ]
   argc -= 2
-elif mode == 'ls-all':
+elif mode == 'list':
   database_name = argv[ -1 ]
 
 if '-t' in argv:
@@ -155,7 +176,7 @@ if argc < 3 and mode == 'download':
   download_usage() 
   exit()
 
-if argc != 3 and mode == 'ls-all':
+if argc != 3 and mode == 'list':
   list_usage() 
   exit()
 
@@ -169,7 +190,7 @@ if mode == 'help':
     upload_usage()
   elif command == 'download':
     download_usage()
-  elif command == 'ls-all':
+  elif command == 'list':
     list_usage()
   elif command == 'help':
     help_usage()
@@ -194,7 +215,7 @@ if mode == 'upload' or mode == 'download':
     downloader.download( argv[ -1 ]  )
 
 #if user wants to list chunked files
-elif mode == 'ls-all':
+elif mode == 'list':
   meta_db = ChunkDB( argv[ -1 ] )
   meta_db.list_all_files() 
 

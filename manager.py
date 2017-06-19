@@ -1,12 +1,13 @@
 from multiprocessing import Process, Queue
 from os.path import join, abspath, isfile, isdir, relpath, normpath, basename
 from os import walk, remove
-from chunkdb import ChunkDB
+from db import ChunkDB
 from storage import Storage
 from chunk import Chunker, Unchunker
 from state import flags
 from fs import Filesystem
 from utilities import dwalk, ensure_path
+from json import loads
 
 class Manager( object ):
 
@@ -65,7 +66,7 @@ class UploadManager( Manager ):
     storage = Storage( self.cred.get_client() )
     return Chunker( storage, p_db )
 
-   
+  
   def __load__( self, file_name, abs_path, fpair ):
     try:
       entry = self.db.fill_dicts_from_db( [ '*' ], { "file_handle": join( fpair.fsource, file_name ) }, ChunkDB.FILE_TABLE, entries=1 ).pop()
@@ -82,7 +83,8 @@ class UploadManager( Manager ):
   def upload( self, read_path, write_dir ):
     #find all files within a directory, ignoring any existing chunk or metadata files
     all_files = []
-    self.fs = Filesystem( self.cred.get_client(), basename( normpath( read_path ) ) )
+    client = self.cred.get_client()
+    self.fs = Filesystem( client, basename( normpath( read_path ) ) )
     read_path = abspath( read_path )
 
     if isfile( read_path ):
