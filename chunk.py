@@ -149,16 +149,16 @@ class Chunker( Process ):
       print( "ERROR: unable to find statistics on " + read_handle + ", skipping ..." )
       return
     
-    checksum = str( md5( file_contents ).hexdigest() )
+    #checksum = str( md5( file_contents ).hexdigest() )
 
     # if there has been no changes to the file since it was last uploaded
-    if entry and entry[ 'file_checksum' ] == checksum:
-      if self.verbose:
-        if self.force:
-				  print( file_handle + " unchanged since last chunking, however forcing upload ... " )
-        else:
-          print( file_handle + " unchanged since last chunking, ignoring ... " )
-          return
+    #if entry and entry[ 'file_checksum' ] == checksum:
+    #  if self.verbose:
+    #    if self.force:
+		#		  print( file_handle + " unchanged since last chunking, however forcing upload ... " )
+    #    else:
+    #      print( file_handle + " unchanged since last chunking, ignoring ... " )
+    #      return
    
     # remove any leftover pieces
     self.meta_db.delete_file_chunk_entries( file_handle ) 
@@ -170,8 +170,7 @@ class Chunker( Process ):
     self.__record_permissions__( file_handle, file_stats )
              
     self.meta_db.fill_db_from_dict( { 'file_path' : fpair.fsource,
-                              'file_handle' : file_handle,
-                              'file_checksum' : checksum }, self.meta_db.FILE_TABLE ) 
+                              'file_handle' : file_handle }, self.meta_db.FILE_TABLE ) 
     
     file_size = file_stats.st_size
     if not self.chunk_size: 

@@ -32,7 +32,7 @@ class ChunkDB:
 
     if self.FILE_TABLE not in tables:
       self.cursor.execute( "CREATE TABLE " + self.FILE_TABLE + ''' (  file_path text, file_handle text,
-                                                                      file_checksum text, UNIQUE( file_handle ) )''' )
+                                                                      UNIQUE( file_handle ) )''' )
 
     if self.DIRECTORY_TABLE not in tables:
       self.cursor.execute( "CREATE TABLE " + self.DIRECTORY_TABLE

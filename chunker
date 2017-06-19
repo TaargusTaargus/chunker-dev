@@ -30,9 +30,6 @@ def usage():
                   request threading with specified number of threads
                 -cf, --collapse
                   collapse the filesystem on upload
-            
-
-              UPLOAD OPTIONS:
                 -e, --encrypt
                   enable encryption
                 -c size
@@ -124,8 +121,12 @@ if '-t' in argv:
   thread_count = int( argv[ argv.index( '-t' ) + 1 ] )
   argc -= 2
 
+if mode == 'upload':
 
-if mode == 'upload': 
+  if '-cf' in argv or '--collapse' in argv:
+    flags[ 'collapse_flag' ] = True
+    argc -= 1
+
   if '-c' in argv:
     flags[ 'chunk_size' ] = int( argv[ argv.index( '-c' ) + 1 ] )
     argc -= 2
@@ -133,10 +134,6 @@ if mode == 'upload':
   if '-e' in argv or '--encrypt' in argv:
     flags[ 'encrypt_flag' ] = True
     argc -= 1
-
-  if '-cf' in argv or '--collapse' in argv:
-		flags[ 'collapse_flag' ] = True
-		argc -= 1
 
   if '-f' in argv or '--force' in argv:
     flags[ 'force_flag' ] = True
@@ -189,7 +186,7 @@ if mode == 'upload' or mode == 'download':
     print( 'creating ' + mode + 'ing service ...' )
  
   if mode == 'upload':
-    database_name = argv[ -1 ] + '-db'
+    database_name = database_name if database_name else argv[ -1 ] + '-db'
     uploader = UploadManager( credentials, database_name, thread_count )
     uploader.upload( argv[ -1 ], writedir )
   else: 

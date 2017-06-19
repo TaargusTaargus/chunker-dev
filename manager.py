@@ -166,8 +166,9 @@ class DownloadManager( Manager ):
     all_files = []
     ensure_path( abspath( write_dir ) )
  
-    for entry in self.db.fill_dicts_from_db( [ 'directory_handle' ], None, ChunkDB.DIRECTORY_TABLE ):
-      ensure_path( join( write_dir, entry[ 'directory_handle' ] ) )
+    if not flags[ 'collapse_flag' ]:
+      for entry in self.db.fill_dicts_from_db( [ 'directory_handle' ], None, ChunkDB.DIRECTORY_TABLE ):
+        ensure_path( join( write_dir, entry[ 'directory_handle' ] ) )
 
     for entry in self.db.fill_dicts_from_db( [ 'chunk_id' ], None, ChunkDB.CHUNK_TABLE, distinct=True ):
       self.__load_chunk__( write_dir, entry[ 'chunk_id' ] )

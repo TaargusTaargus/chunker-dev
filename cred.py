@@ -12,7 +12,7 @@ class Credentials:
  
   APPLICATION_NAME = "Filesystem Chunker"
   AVAILABLE = [ 'box', 'drive', 'local' ]
-  DRIVE_SECRET_FILE = "/home/johnson/dev/python/chunker-dev/conf/client_secret_drive.json"  
+  DRIVE_SECRET_FILE = "/home/johnson/dev/python/chunker/chunker-dev/conf/client_secret_drive.json"  
   DEFAULT_CRED_DIR = join( expanduser( "~" ), ".chunker" )
   DEFAULT_CRED_FILE = "credentials"
   SCOPE = "https://www.googleapis.com/auth/drive"
