@@ -1,4 +1,4 @@
-from os import makedirs
+from os import makedirs, rename
 from os.path import exists, expanduser, join
 from oauth2client.file import Storage
 from oauth2client import client, tools
@@ -8,7 +8,6 @@ from boxsdk import Client, OAuth2
 from sys import version
 from state import flags	
 from db import UserDB
-from copy import deepcopy
 
 class Credentials:
  
@@ -16,56 +15,36 @@ class Credentials:
   AVAILABLE = [ 'box', 'drive' ]
   DRIVE_SECRET_FILE = "/home/johnson/dev/python/chunker/chunker-dev/conf/client_secret_drive.json"
   DEFAULT_CRED_DIR = join( expanduser( "~" ), ".chunker" )
-  DEFAULT_CRED_FILE = "credentials"
+  DEFAULT_CRED_FILE = join( DEFAULT_CRED_DIR, "credentials" )
   DEFAULT_USER_DB = join( DEFAULT_CRED_DIR, "users.db" )
   SCOPE = "https://www.googleapis.com/auth/drive"
  
-  def __init__( self, credential_file ): 
-    if flags[ 'storage_mode' ] not in self.AVAILABLE:
-      print( 'ERROR: invalid storage mode, availabe modes are ' +                                                                     
-             ', '.join( self.AVAILABLE ) + ' ...' )                                                                                   
- 
-    self.udb = UserDB( self.DEFAULT_USER_DB ) 
-    self.credential_path = credential_file 
-    self.storage = flags[ 'storage_mode' ]
+  def __init__( self ):  
+    self.udb = UserDB( self.DEFAULT_USER_DB )  
 
-    if self.storage == 'box':                                                                                                         
-      with open( credential_file, 'r' ) as cnfg:                                                                                      
-        self.CLIENT_ID = cnfg.readline()
-        self.CLIENT_SECRET = cnfg.readline()
-        self.ACCESS_TOKEN = cnfg.readline()
 
-      oauth2 = OAuth2( self.CLIENT_ID, self.CLIENT_SECRET, access_token = self.ACCESS_TOKEN )
-      self.client = Client( oauth2 )
+  def __authorize__( self, cred_path ):
+    gauth = GoogleAuth()
+    gauth.LoadClientConfigFile( self.DRIVE_SECRET_FILE )
+    gauth.LoadCredentialsFile( cred_path )
+    return GoogleDrive( gauth )
 
-    elif self.storage == 'drive':
-      gauth = GoogleAuth()
-      gauth.LoadClientConfigFile( self.DRIVE_SECRET_FILE )
-      gauth.LoadCredentialsFile( self.__get_credentials__() )
-      self.client = GoogleDrive( gauth )
-      self.__update_db__( self.client )
-      self.udb.list_users()
 
-  def __update_db__( self, client ):
+  def __insert_user__( self, client, cred_path ):
+    about = client.GetAbout()
+    new_path = about[ 'user' ][ 'emailAdress' ].split( "@" )[ 0 ]
+    rename( cred_path, join( DEFAULT_CRED_DIR, new_path ) ) 
+    self.udb.add_user( about[ 'user' ][ 'emailAdress' ], new_path )
+
+
+  def __update_user__( self, client, cred_path ):
     about = client.GetAbout()
     self.udb.update_user( about[ 'user' ][ 'emailAddress' ], about[ 'quotaBytesUsed' ], about[ 'quotaBytesTotal' ] )
 
 
-  def __get_credentials__( self ):
-    if self.credential_path:
-      if exists( self.credential_path ):
-        return self.credential_path
-      else:
-        print( "could not find credential file " + self.credential_path + " ... " )   
-   
-    credential_path = join( self.DEFAULT_CRED_DIR, self.DEFAULT_CRED_FILE )
-
-    if not exists( self.DEFAULT_CRED_DIR ):
-      makedirs( self.DEFAULT_CRED_DIR )
-    if exists( credential_path ):
-      return credential_path 
-
-    store = Storage( credential_path )
+  def expand( self ):
+    #create working directory
+    store = Storage( self.DEFAULT_CRED_FILE )
     credentials = store.get()
     if not credentials or credentials.invalid:
         flow = client.flow_from_clientsecrets( self.DRIVE_SECRET_FILE, self.SCOPE )
@@ -75,12 +54,16 @@ class Credentials:
         #else: 
         #    tools.run( flow, store )
         print( 'storing credentials to ' + credential_path + " ... ")
-    return credential_path
+    
+    client = self.__authorize__( credential_path )
+    self.__insert_user__( client, credential_path ) 
 
 
-  def get_client( self ):
-    if self.storage == 'box':
-      return deepcopy( self.client )
-    else:
-      return deepcopy( self.client )
+  def get_clients( self ):
+    clients = []
+    for path in self.udb.get_credetial_paths(): 
+      client = self.__authorize__( path )
+      self.__update_user__( client, path )
+      clients.append( client )
+    return clients
 

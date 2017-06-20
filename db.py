@@ -49,16 +49,25 @@ class UserDB( BaseDB ):
   def __init__( self, db_name ):
     BaseDB.__init__( self, db_name )
     self.cursor.execute( "CREATE TABLE IF NOT EXISTS " + self.USER_TABLE + " ( username text, quota_bytes int, quota_gib int, \
-                                                                                 used_bytes int, used_gib int, UNIQUE( username ) ) " )
+                                                                                 used_bytes int, used_gib int, cred_path text, UNIQUE( username ) ) " )
     try:
       self.db.commit()
     except:
       print( "ERROR: was unable to create database " + db_name + " ..." )
 
 
+  def add_user( self, username, cred_path ):
+    self.cursor.execute( "INSERT INTO " + self.USER_TABLE + " ( username, cred_path ) VALUES ( '" + username + "', '"
+                         + cred_path + "')" )
+
+
   def update_user( self, username, used_bytes, quota_bytes ):
     self.fill_db_from_dict( { 'username': username, 'quota_bytes': int( quota_bytes ), 'quota_gib': int( quota_bytes ) / self.GiB_DIVISOR,
                                 'used_bytes': int( used_bytes ), 'used_gib': int( used_bytes ) / self.GiB_DIVISOR }, self.USER_TABLE )
+
+
+  def get_credential_paths( self ):
+    return [ e, for e in self.get_objects_from_db( [ 'cred_path' ], None, self.USER_TABLE, False ) ]
 
  
   def list_users( self ):
