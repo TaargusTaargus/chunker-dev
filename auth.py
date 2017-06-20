@@ -8,6 +8,29 @@ from boxsdk import Client, OAuth2
 from sys import version
 from state import flags	
 from db import UserDB
+from utilities import drive_makedirs
+from copy import deepcopy
+
+class Client:
+
+  def __init__( self, client, username, cdir ):
+    self.client = client
+    self.username = username
+    self.cdir = cdir
+
+
+  def get_chunk_dir( self ):
+    return self.cdir
+
+ 
+  def get_client( self ):
+    return self.client
+
+  
+  def get_username( self ):
+    return self.username
+
+
 
 class Authorizer:
  
@@ -15,6 +38,7 @@ class Authorizer:
   AVAILABLE = [ 'box', 'drive' ]
   DRIVE_SECRET_FILE = "/home/johnson/dev/python/chunker/chunker-dev/conf/client_secret_drive.json"
   DEFAULT_CRED_DIR = join( expanduser( "~" ), ".chunker" )
+  DEFAULT_CHUNK_DIR = ".chunker"
   DEFAULT_CRED_FILE = join( DEFAULT_CRED_DIR, "credentials" )
   DEFAULT_USER_DB = join( DEFAULT_CRED_DIR, "users.db" )
   SCOPE = "https://www.googleapis.com/auth/drive"
@@ -30,14 +54,16 @@ class Authorizer:
     return GoogleDrive( gauth )
 
 
-  def __insert_user__( self, client, cred_path ):
+  def __insert_user__( self, client, cred_path, chunk_dir ):
     about = client.GetAbout()
     new_path = about[ 'user' ][ 'emailAddress' ].split( "@" )[ 0 ]
     rename( cred_path, join( self.DEFAULT_CRED_DIR, new_path ) ) 
-    self.udb.add_user( about[ 'user' ][ 'emailAddress' ], new_path )
+    print( "new_path: " + new_path )
+    print( "chunk_dir: " + chunk_dir )
+    self.udb.add_user( about[ 'user' ][ 'emailAddress' ], new_path, chunk_dir )
 
 
-  def __update_user__( self, client, cred_path ):
+  def __update_user__( self, client ):
     about = client.GetAbout()
     self.udb.update_user( about[ 'user' ][ 'emailAddress' ], about[ 'quotaBytesUsed' ], about[ 'quotaBytesTotal' ] )
 
@@ -57,14 +83,16 @@ class Authorizer:
       print( 'storing credentials to ' + credential_path + " ... ")
     
     cli = self.__authorize__( credential_path )
-    self.__insert_user__( cli, credential_path ) 
+    cdir = drive_makedirs( cli, self.DEFAULT_CHUNK_DIR ) 
+    self.__insert_user__( cli, credential_path, cdir ) 
 
 
-  def get_clients( self ):
+  def get_all_clients( self ):
     clients = []
-    for path in self.udb.get_credetial_paths(): 
+    for name, path, cdir in self.udb.get_users( keys = [ 'username', 'cred_path', 'chunk_dir' ] ):
+      path = join( self.DEFAULT_CRED_DIR, path )
       client = self.__authorize__( path )
-      self.__update_user__( client, path )
-      clients.append( client )
+      self.__update_user__( client )
+      clients.append( Client( client, name, cdir ) )
     return clients
 

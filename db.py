@@ -20,6 +20,7 @@ class BaseDB:
     self.cursor.execute( sql, dict.values() )
     self.db.commit()  
 
+
   def fill_dicts_from_db( self, keys, where, table_name, like=False, entries=None, distinct=None ):
     results = self.get_objects_from_db( keys, where, table_name, like, distinct=distinct )
     keys = [ key[ 0 ] for key in self.cursor.description ]
@@ -48,31 +49,39 @@ class UserDB( BaseDB ):
 
   def __init__( self, db_name ):
     BaseDB.__init__( self, db_name )
-    self.cursor.execute( "CREATE TABLE IF NOT EXISTS " + self.USER_TABLE + " ( username text, quota_bytes int, quota_gib int, \
-                                                                                 used_bytes int, used_gib int, cred_path text, UNIQUE( username ) ) " )
+    tables = [ t for t, in self.cursor.execute( "SELECT name FROM sqlite_master WHERE type='table'" ).fetchall() ]        
+
+    if self.USER_TABLE not in tables:
+      self.cursor.execute( "CREATE TABLE " + self.USER_TABLE + " ( username text, quota_bytes int, quota_gib int, \
+                                                                                 used_bytes int, used_gib int, cred_path text, \
+                                                                                 chunk_dir text, UNIQUE( username ) ) " )
     try:
       self.db.commit()
     except:
       print( "ERROR: was unable to create database " + db_name + " ..." )
 
 
-  def add_user( self, username, cred_path ):
-    self.cursor.execute( "INSERT INTO " + self.USER_TABLE + " ( username, cred_path ) VALUES ( '" + username + "', '"
-                         + cred_path + "')" )
+  def add_user( self, username, cred_path, chunk_dir ):
+    self.cursor.execute( "INSERT INTO " + self.USER_TABLE + " ( username, cred_path, chunk_dir ) VALUES ( '" + username + "', '"
+                         + cred_path + "', '" + chunk_dir + "' )" )
+    self.db.commit()
 
 
   def update_user( self, username, used_bytes, quota_bytes ):
-    self.fill_db_from_dict( { 'username': username, 'quota_bytes': int( quota_bytes ), 'quota_gib': int( quota_bytes ) / self.GiB_DIVISOR,
-                                'used_bytes': int( used_bytes ), 'used_gib': int( used_bytes ) / self.GiB_DIVISOR }, self.USER_TABLE )
+    self.cursor.execute( "UPDATE " + self.USER_TABLE + " SET "
+                          + "quota_bytes=" + str( quota_bytes ) + ", quota_gib=" + str( int ( int( quota_bytes ) /self.GiB_DIVISOR ) ) + "," 
+                          + " used_bytes=" + str( used_bytes ) + ", used_gib=" + str( int( int( used_bytes ) / self.GiB_DIVISOR ) )
+                          + " WHERE username='" + username + "'" )
+    self.db.commit()
 
 
-  def get_credential_paths( self ):
-    return [ e for e, in self.get_objects_from_db( [ 'cred_path' ], None, self.USER_TABLE, False ) ]
+  def get_users( self, keys=[ 'username' ], where=None ):
+    return self.get_objects_from_db( keys, where, self.USER_TABLE, False )
 
  
   def list_users( self ):
     print( "USERS:" )
-    for user, in self.get_objects_from_db( [ 'username' ], None, self.USER_TABLE, False ):
+    for user, in self.get_users():
       print( user )
 
  
@@ -97,7 +106,7 @@ class ChunkDB( BaseDB ):
                                                                       
 
     if self.CHUNK_TABLE not in tables:
-      self.cursor.execute( "CREATE TABLE " + self.CHUNK_TABLE + ''' ( chunk_order int, chunk_id text,
+      self.cursor.execute( "CREATE TABLE " + self.CHUNK_TABLE + ''' ( username text, chunk_id text,
                                                                       file_handle text, start_in_chunk text,
                                                                       end_in_chunk text, encoding text,
                                                                       hash_key text, init_vec text )''' )
@@ -150,8 +159,7 @@ class ChunkDB( BaseDB ):
 
   def get_related_chunks( self, file_path='' ):
     return self.cursor.execute( 'SELECT DISTINCT chunk_id FROM ' + self.CHUNK_TABLE 
-                                + " WHERE file_handle LIKE '" + file_path + "%'"
-                                + " ORDER BY chunk_order" ).fetchall()  
+                                + " WHERE file_handle LIKE '" + file_path + "%'" ).fetchall()  
 
 
   def get_related_symlinks( self, cols=[ 'link_path', 'link_handle', 'link_dest' ], where={ 'link_path': '' }, like=True ):

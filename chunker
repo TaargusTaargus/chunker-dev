@@ -24,31 +24,22 @@ def usage():
                chunker help COMMAND
 
 
-              GENERAL OPTIONS:
-
-                -s mode
-                  determines storage location: box, drive (default)
+              GENERAL OPTIONS:)
                 -m db
                   specify the database file to write to/read from
                 -v, --verbose
                   more verbose output from chunk
-                -w write-dir
-                  directory to write uploaded/downloaded files to (defaults to [DIR])
                 -t # of threads
                   request threading with specified number of threads
 
 
               UPLOAD ONLY OPTIONS:
-                -cf, --collapse
-                  collapse the filesystem on upload
                 -e, --encrypt
                   enable encryption
-                -c size
+                -s size
                   chunk all files within [size] byte chunks
                 -f, --force
                   forces  reupload
-                -a, --fast
-                  fastest mode for upload (-cf -c 10000000)
 								
      ''' )
 
@@ -112,19 +103,12 @@ if mode not in [ 'init', 'download', 'upload', 'list', 'help' ]:
   usage()
   exit( 0 )
 
+flags[ 'chunk_size' ] = 10000000
 database_name = None
 storage_mode = "drive"
 thread_count = cpu_count()
 cred_file = None
 writedir = None
-
-if '-s' in argv:
-  storage_mode = argv[ argv.index( '-s' ) + 1 ]
-  argc -= 2
-
-if '-w' in argv:
-  writedir = argv[ argv.index( '-w' ) + 1 ]
-  argc -= 2
 
 if '-v' in argv or '--verbose' in argv:
   flags[ 'verbose_flag' ] = True
@@ -142,11 +126,7 @@ if '-t' in argv:
 
 if mode == 'upload':
 
-  if '-cf' in argv or '--collapse' in argv:
-    flags[ 'collapse_flag' ] = True
-    argc -= 1
-
-  if '-c' in argv:
+  if '-s' in argv:
     flags[ 'chunk_size' ] = int( argv[ argv.index( '-c' ) + 1 ] )
     argc -= 2
   
@@ -158,13 +138,8 @@ if mode == 'upload':
     flags[ 'force_flag' ] = True
     argc -= 1
 
-  if '-a' in argv or '--fast' in argv:
-		flags[ 'collapse_flag' ] = True
-		flags[ 'chunk_size' ] = 10000000
-		argc -= 1
-
-  if thread_count > cpu_count():
-    print( "WARNING: thread count higher than available cores (" + str( cpu_count() ) + "), might cause slowdown ... " )
+if thread_count > cpu_count():
+  print( "WARNING: thread count higher than available cores (" + str( cpu_count() ) + "), might cause slowdown ... " )
 
 if argc < 3 and mode == 'upload':
   upload_usage() 
@@ -215,10 +190,10 @@ elif mode == 'upload' or mode == 'download':
  
   if mode == 'upload':
     database_name = database_name if database_name else argv[ -1 ] + '-db'
-    uploader = UploadManager( credentials, database_name, thread_count )
+    uploader = UploadManager( database_name, thread_count )
     uploader.upload( argv[ -1 ], writedir )
   else: 
-    downloader = DownloadManager( credentials, database_name, thread_count )  
+    downloader = DownloadManager( database_name, thread_count )  
     downloader.download( argv[ -1 ]  )
 
 #if user wants to list chunked files

@@ -1,13 +1,13 @@
 from multiprocessing import Process, Queue
-from os.path import join, abspath, isfile, isdir, relpath, normpath, basename
+from os.path import join, abspath, isfile, islink, isdir, relpath, normpath, basename
 from os import walk, remove
 from db import ChunkDB
 from storage import Storage
 from chunk import Chunker, Unchunker
 from state import flags
-from fs import Filesystem
-from utilities import dwalk, ensure_path
-from json import loads
+from utilities import ensure_path
+from auth import Authorizer
+from copy import deepcopy
 
 class Manager( object ):
 
@@ -52,29 +52,37 @@ class Manager( object ):
       self.__finish__()
 
 
+
 class UploadManager( Manager ):
   
-  def __init__( self, credentials, db_name, total_procs=1 ):
-    self.cred = credentials
+  def __init__( self, db_name, total_procs=1 ):
+    self.clients = Authorizer().get_all_clients()
     self.db = ChunkDB( db_name )
-    self.fs = None
     Manager.__init__( self, total_procs )
 
 
   def __init_proc__( self, np ):
     p_db = ChunkDB( self.db.db_name + str( np ) )
-    storage = Storage( self.cred.get_client() )
+    storage = Storage( [ deepcopy( e ) for e in self.clients ] )
     return Chunker( storage, p_db )
 
-  
-  def __load__( self, file_name, abs_path, fpair ):
-    try:
-      entry = self.db.fill_dicts_from_db( [ '*' ], { "file_handle": join( fpair.fsource, file_name ) }, ChunkDB.FILE_TABLE, entries=1 ).pop()
-    except:
-      entry = None
-    self.next().queue( file_name, abs_path, fpair, entry )
+
+  def __load_dir__( self, read_handle, file_handle ):
+    self.next().queue_dir( read_handle, file_handle )
 
  
+  def __load_file__( self, read_handle, file_handle, file_name ):
+    try:
+      entry = self.db.fill_dicts_from_db( [ '*' ], { "file_handle": file_handle }, ChunkDB.FILE_TABLE, entries=1 ).pop()
+    except:
+      entry = None
+    self.next().queue_file( read_handle, file_handle, file_name, entry )
+
+
+  def __load_link__( self, read_handle, link_path, link_name ):
+    self.next().queue_link( read_handle, link_path, link_name )
+
+
   def __finish__( self, proc ):
     self.db.copy_other_db( proc.meta_db )
     remove( proc.meta_db.db_name )
@@ -83,11 +91,6 @@ class UploadManager( Manager ):
   def upload( self, read_path, write_dir ):
     #find all files within a directory, ignoring any existing chunk or metadata files
     all_files = []
-
-
-    ### NEW CHALLENGES IS TO REVERT EVERYTHING BACK TO A CHUNKING FILE SYSTEM... TO AVOID ALL OF THIS FS
-    client = self.cred.get_client()
-    self.fs = Filesystem( client, basename( normpath( read_path ) ) )
     read_path = abspath( read_path )
 
     if isfile( read_path ):
@@ -100,14 +103,16 @@ class UploadManager( Manager ):
       for root, dirs, files in walk( read_path, topdown=False, followlinks=False ):
         rel = relpath( root, read_path )
         rel = rel if rel[ 0 ] != '.' or len( rel ) > 1 else rel[ 1: ]
+        
+        for dir in dirs:
+          self.__load_dir__( join( root, dir ), join( rel, dir ) )
 
-        if not flags[ 'collapse_flag' ] and rel:
-          self.fs.mkdir( rel )
-          #for dir in dirs:
-          #  self.__load__( dir, root, self.fs.get_filepair( rel ) )
-
-        for file in files + dirs:
-          self.__load__( file, root, self.fs.get_filepair( rel ) )
+        for file in files:
+          read_handle = join( root, file )
+          if islink( read_handle ):
+            self.__load_link__( read_handle, rel, file )
+          else:
+            self.__load_file__( read_handle, rel, file )
 
     self.run() 
 
@@ -115,21 +120,20 @@ class UploadManager( Manager ):
 
 class DownloadManager( Manager ):
   
-  def __init__( self, credentials, db_name=None, total_procs=1 ):
-    self.cred = credentials
+  def __init__( self, db_name=None, total_procs=1 ):
+    self.clients = Authorizer().get_all_clients()
     self.db = ChunkDB( db_name ) if db_name else None
-    self.fs = None
     Manager.__init__( self, total_procs )
 
 
   def __init_proc__( self, np ):
-    storage = Storage( self.cred.get_client() )
+    storage = Storage( [ deepcopy( e ) for e in self.clients ] )
     return Unchunker( self.db, storage )
 
    
   def __load_chunk__( self, write_dir, chunkid ):
     try:
-      entry = self.db.fill_dicts_from_db( [ 'encoding', 'hash_key', 'init_vec' ], { "chunk_id": chunkid }, ChunkDB.CHUNK_TABLE, entries=1 ).pop()
+      entry = self.db.fill_dicts_from_db( [ 'username', 'encoding', 'hash_key', 'init_vec' ], { "chunk_id": chunkid }, ChunkDB.CHUNK_TABLE, entries=1 ).pop()
       file_entries = self.db.get_chunk_file_entries( chunkid )
     except:
       entry = None
@@ -171,9 +175,8 @@ class DownloadManager( Manager ):
     all_files = []
     ensure_path( abspath( write_dir ) )
  
-    if not flags[ 'collapse_flag' ]:
-      for entry in self.db.fill_dicts_from_db( [ 'directory_handle' ], None, ChunkDB.DIRECTORY_TABLE ):
-        ensure_path( join( write_dir, entry[ 'directory_handle' ] ) )
+    for entry in self.db.fill_dicts_from_db( [ 'directory_handle' ], None, ChunkDB.DIRECTORY_TABLE ):
+      ensure_path( join( write_dir, entry[ 'directory_handle' ] ) )
 
     for entry in self.db.fill_dicts_from_db( [ 'chunk_id' ], None, ChunkDB.CHUNK_TABLE, distinct=True ):
       self.__load_chunk__( write_dir, entry[ 'chunk_id' ] )

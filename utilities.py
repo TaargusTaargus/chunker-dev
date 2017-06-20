@@ -4,14 +4,20 @@ from os.path import isdir
 from os.path import relpath as os_relpath
 from state import flags
 
-def dwalk( client, root ):
-  dirs = [ ( root, "" ) ]
-  while dirs:
-    dir = dirs.pop()
-    cdirs, files = lsplit( client.ListFile({'q': "'" + dir[ 0 ] + "' in parents"}).GetList(), 'mimeType', 'application/vnd.google-apps.folder' )
-    dirs.extend( [ ( e[ 'id' ], dir[ 1 ] + e[ 'title' ] + sep ) for e in cdirs ] )
-    yield dir[ 1 ], dir[ 0 ], files, cdirs
-
+def drive_makedirs( client, path ):
+  abs_path = trim( path )
+  root = "root"
+  for part in abs_path.split( sep ):
+    flag = False
+    for e in client.ListFile( { 'q': "'" + root + "' in parents" } ).GetList():
+      if e[ 'title' ] == part:
+        flag = True
+        root = e[ 'id' ]
+    if not flag:
+      file = client.CreateFile( { 'title': part, 'mimeType': 'application/vnd.google-apps.folder', 'parents': [ { 'id': root } ] } )
+      file.Upload()
+      root = file[ 'id' ]
+  return root 
 
 
 def lsplit( list, key, val ):

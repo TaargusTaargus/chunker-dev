@@ -1,4 +1,4 @@
-from chunkdb import ChunkDB
+from db import ChunkDB
 from multiprocessing import Process
 from os import sep, lstat, symlink, readlink, utime, chmod, chown, chdir, listdir, stat, getcwd, walk
 from os.path import islink, isfile, join, isdir, abspath
@@ -26,9 +26,7 @@ class Chunk:
  
   def concatenate( self, file_handle, str ):
     self.string += str
- 
     meta = {}
-
     meta[ 'file_handle' ] = file_handle
     meta[ 'start_in_chunk' ] = self.used
     meta[ 'end_in_chunk' ] = self.used + len( str ) - 1 
@@ -71,6 +69,7 @@ class Chunk:
     self.string = self.string[ :( -1 * len( self.END_OF_CHUNK ) ) ]
 
 
+
 class Chunker( Process ):
 
   CHUNK_EXTENSION='.chk'
@@ -105,7 +104,7 @@ class Chunker( Process ):
                                       'file_mod_time': file_stats.st_mtime }, self.meta_db.PERMISSIONS_TABLE )
  
 
-  def write_chunk( self, chunk_dir ):
+  def write_chunk( self ):
     if not self.curr:
       return
    
@@ -118,12 +117,12 @@ class Chunker( Process ):
       print( 'writing chunk ' + self.curr.chunk_name + ' ...' ) 
 
     
-    chunk_name = self.storage.write_chunk( self.curr, chunk_dir ) if self.curr.used > 0 else EMPTY_CHUNK_NAME 
+    username, chunk_name = self.storage.write_chunk( self.curr ) if self.curr.used > 0 else EMPTY_CHUNK_NAME 
 
     for e in self.curr.meta:
       # add all meta-data not obvious at chunk-level
-      e[ 'chunk_order' ] = self.chunk_count
-      e[ 'chunk_id' ] = chunk_name
+      e[ 'username' ] = username
+      e[ 'chunk_id' ] = chunk_name 
       e[ 'hash_key' ] = key if self.encrypt else ''
       e[ 'init_vec' ] = self.iv if self.encrypt else ''
       e[ 'encoding' ] = encoding
@@ -133,8 +132,8 @@ class Chunker( Process ):
     self.curr = Chunk( str( self.chunk_count ) + '-' + str( self.pid ) + self.CHUNK_EXTENSION ) 
       
      
-  def chunk_file( self, read_handle, fpair, file_name, entry ): 
-    file_handle = join( fpair.fsource, file_name )
+  def chunk_file( self, read_handle, file_path, file_name, entry ): 
+    file_handle = join( file_path, file_name )
     try:
       file = open( read_handle, 'rb' )
       file_contents = file.read()
@@ -169,14 +168,14 @@ class Chunker( Process ):
     # record permissions
     self.__record_permissions__( file_handle, file_stats )
              
-    self.meta_db.fill_db_from_dict( { 'file_path' : fpair.fsource,
+    self.meta_db.fill_db_from_dict( { 'file_path' : file_path,
                               'file_handle' : file_handle }, self.meta_db.FILE_TABLE ) 
     
     file_size = file_stats.st_size
     if not self.chunk_size: 
       self.curr.concatenate( file_handle, file_contents )
       self.curr.chunk_name = file_name
-      self.write_chunk( fpair.fdest )
+      self.write_chunk()
       return 
 
     cnt = 0
@@ -186,7 +185,7 @@ class Chunker( Process ):
     while file_size > 0:
 
       if self.curr.used >= self.chunk_size:
-        self.write_chunk( fpair.fdest )
+        self.write_chunk()
 
       n = self.chunk_size - self.curr.used if self.chunk_size - self.curr.used < file_size else file_size
       self.curr.concatenate( file_handle, file_contents[ cnt : ( cnt + n ) ] )
@@ -237,34 +236,32 @@ class Chunker( Process ):
         self.__queue_file__( file_handle, fpair, file_name, db_entry )
   
   
-  def __queue_dir__( self, handle, rel_handle ):
+  def queue_dir( self, handle, rel_handle ):
     self.chunk_queue[ 'dir' ].append( ( handle, rel_handle ) )
 
 
-  def __queue_file__( self, file_name, abs_path, fpair, entry ):
-    self.chunk_queue[ 'file' ].append( ( file_name, abs_path, fpair, entry ) )
+  def queue_file( self, read_path, file_path, file_name, entry ):
+    self.chunk_queue[ 'file' ].append( ( read_path, file_path, file_name, entry ) )
 
 
-  def __queue_link__( self, file_name, file_handle, fpair ):
-    self.chunk_queue[ 'link' ].append( ( file_handle, fpair.fsource, file_name, readlink( file_handle ) ) )
+  def queue_link( self, read_handle, file_path, file_name ):
+    self.chunk_queue[ 'link' ].append( ( read_handle, file_path, file_name, readlink( read_handle ) ) )
  
   
   def run( self ):
     self.curr = Chunk( str( self.chunk_count ) + '-' + str( self.pid ) + self.CHUNK_EXTENSION )
-    last = None
     
     for handle, rel_handle in self.chunk_queue[ 'dir' ]:
       self.chunk_directory( handle, rel_handle )
   
-    for file_handle, fpair, file_name, entry in self.chunk_queue[ 'file' ]:
-      self.chunk_file( file_handle, fpair, file_name, entry ) 
-      last = fpair.fdest
+    for read_handle, file_path, file_name, entry in self.chunk_queue[ 'file' ]:
+      self.chunk_file( read_handle, file_path, file_name, entry ) 
  
     if self.curr.used > 0:
-      self.write_chunk( last )
+      self.write_chunk()
 
-    for handle, source, fname, dest in self.chunk_queue[ 'link' ]:
-      self.chunk_symlink( handle, source, fname, dest )
+    for read_handle, link_path, link_name, link_dest in self.chunk_queue[ 'link' ]:
+      self.chunk_symlink( read_handle, link_path, link_name, link_dest )
 
     self.chunk_queue = []
          
@@ -305,7 +302,7 @@ class Unchunker ( Process ):
     if chunkid == EMPTY_CHUNK_NAME:
       unchunk.string = "~"
     else:
-      unchunk.string = self.storage.read_chunk( chunkid )  
+      unchunk.string = self.storage.read_chunk( chunk_entry[ 'username' ], chunkid )  
 
     # if we don't have metadata on either chunk or file just write the file and terminate
     #if not chunk_entry and not chunk_file_table:
