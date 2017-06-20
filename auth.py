@@ -9,7 +9,7 @@ from sys import version
 from state import flags	
 from db import UserDB
 
-class Credentials:
+class Authorizer:
  
   APPLICATION_NAME = "Filesystem Chunker"
   AVAILABLE = [ 'box', 'drive' ]
@@ -32,9 +32,9 @@ class Credentials:
 
   def __insert_user__( self, client, cred_path ):
     about = client.GetAbout()
-    new_path = about[ 'user' ][ 'emailAdress' ].split( "@" )[ 0 ]
-    rename( cred_path, join( DEFAULT_CRED_DIR, new_path ) ) 
-    self.udb.add_user( about[ 'user' ][ 'emailAdress' ], new_path )
+    new_path = about[ 'user' ][ 'emailAddress' ].split( "@" )[ 0 ]
+    rename( cred_path, join( self.DEFAULT_CRED_DIR, new_path ) ) 
+    self.udb.add_user( about[ 'user' ][ 'emailAddress' ], new_path )
 
 
   def __update_user__( self, client, cred_path ):
@@ -44,19 +44,20 @@ class Credentials:
 
   def expand( self ):
     #create working directory
-    store = Storage( self.DEFAULT_CRED_FILE )
+    credential_path = self.DEFAULT_CRED_FILE
+    store = Storage( credential_path )
     credentials = store.get()
     if not credentials or credentials.invalid:
-        flow = client.flow_from_clientsecrets( self.DRIVE_SECRET_FILE, self.SCOPE )
-        flow.user_agent = self.APPLICATION_NAME
-        #if version > (2,6)
-        tools.run_flow( flow, store, tools.argparser.parse_args(args=[ '--noauth_local_webserver' ]) )
-        #else: 
-        #    tools.run( flow, store )
-        print( 'storing credentials to ' + credential_path + " ... ")
+      flow = client.flow_from_clientsecrets( self.DRIVE_SECRET_FILE, self.SCOPE )
+      flow.user_agent = self.APPLICATION_NAME
+      #if version > (2,6)
+      tools.run_flow( flow, store, tools.argparser.parse_args(args=[ '--noauth_local_webserver' ]) )
+      #else: 
+      #    tools.run( flow, store )
+      print( 'storing credentials to ' + credential_path + " ... ")
     
-    client = self.__authorize__( credential_path )
-    self.__insert_user__( client, credential_path ) 
+    cli = self.__authorize__( credential_path )
+    self.__insert_user__( cli, credential_path ) 
 
 
   def get_clients( self ):

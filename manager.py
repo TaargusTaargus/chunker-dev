@@ -83,6 +83,9 @@ class UploadManager( Manager ):
   def upload( self, read_path, write_dir ):
     #find all files within a directory, ignoring any existing chunk or metadata files
     all_files = []
+
+
+    ### NEW CHALLENGES IS TO REVERT EVERYTHING BACK TO A CHUNKING FILE SYSTEM... TO AVOID ALL OF THIS FS
     client = self.cred.get_client()
     self.fs = Filesystem( client, basename( normpath( read_path ) ) )
     read_path = abspath( read_path )

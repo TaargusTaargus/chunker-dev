@@ -2,7 +2,7 @@
 from manager import UploadManager, DownloadManager
 from storage import Storage
 from db import ChunkDB
-from auth import Credentials
+from auth import Authorizer
 from warnings import simplefilter
 from os.path import isfile
 from sys import argv
@@ -13,7 +13,7 @@ def usage():
   print( '''
                COMMANDS: 
 
-               chunker init USER
+               chunker init
 
                chunker upload [OPTIONS...] DIR
 
@@ -95,11 +95,9 @@ def help_usage():
 
 def init_usage():
   print( '''
-              Usage: chunker init USER
+              Usage: chunker init
            
-              Command to add a user's drive to available filesystem space
-
-              [USER]      - user to be added
+              Command to add a new user Drive to the pool of available storage space
          ''' )
 
 
@@ -110,7 +108,7 @@ if argc == 1:
   exit( 0 )
 
 mode = argv[ 1 ]
-if mode not in [ 'download', 'upload', 'list', 'help' ]:
+if mode not in [ 'init', 'download', 'upload', 'list', 'help' ]:
   usage()
   exit( 0 )
 
@@ -184,12 +182,18 @@ if argc != 3 and mode == 'help':
   help_usage()
   exit()
 
+if argc != 2 and mode == 'init':
+  init_usage()
+  exit()
+
 if mode == 'help':
   command = argv[ -1 ]
   if command == 'upload':
     upload_usage()
   elif command == 'download':
     download_usage()
+  elif command == 'init':
+    init_usage()
   elif command == 'list':
     list_usage()
   elif command == 'help':
@@ -198,10 +202,13 @@ if mode == 'help':
     print( 'unknown command ...' )
   exit()
 
-if mode == 'upload' or mode == 'download': 
+elif mode == 'init':
+  Authorizer().expand()
+
+elif mode == 'upload' or mode == 'download': 
   if flags[ 'verbose_flag' ]:
     print( 'connecting to storage service ' + storage_mode + ' ...' )
-  credentials = Credentials( cred_file )
+  credentials = Authorizer()
    
   if flags[ 'verbose_flag' ]:
     print( 'creating ' + mode + 'ing service ...' )

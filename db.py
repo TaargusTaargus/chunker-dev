@@ -67,7 +67,7 @@ class UserDB( BaseDB ):
 
 
   def get_credential_paths( self ):
-    return [ e, for e in self.get_objects_from_db( [ 'cred_path' ], None, self.USER_TABLE, False ) ]
+    return [ e for e, in self.get_objects_from_db( [ 'cred_path' ], None, self.USER_TABLE, False ) ]
 
  
   def list_users( self ):
