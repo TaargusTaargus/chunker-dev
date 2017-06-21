@@ -136,8 +136,6 @@ class Chunker( Process ):
     file_handle = join( file_path, file_name )
     try:
       file = open( read_handle, 'rb' )
-      file_contents = file.read()
-      file.close()
     except:
       print( "ERROR: unable to open file " + read_handle + ", skipping ..." )
       return
@@ -188,9 +186,11 @@ class Chunker( Process ):
         self.write_chunk()
 
       n = self.chunk_size - self.curr.used if self.chunk_size - self.curr.used < file_size else file_size
-      self.curr.concatenate( file_handle, file_contents[ cnt : ( cnt + n ) ] )
+      self.curr.concatenate( file_handle, file.read( n ) )
       file_size -= n
       cnt += n
+
+    file.close()
 
 
   def chunk_symlink( self, read_handle, rel_path, link_name, link_dest ):

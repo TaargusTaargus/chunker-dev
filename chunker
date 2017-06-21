@@ -127,7 +127,7 @@ if '-t' in argv:
 if mode == 'upload':
 
   if '-s' in argv:
-    flags[ 'chunk_size' ] = int( argv[ argv.index( '-c' ) + 1 ] )
+    flags[ 'chunk_size' ] = int( argv[ argv.index( '-s' ) + 1 ] )
     argc -= 2
   
   if '-e' in argv or '--encrypt' in argv:
