@@ -124,7 +124,7 @@ class DownloadManager( Manager ):
   
   def __init__( self, db_name=None, total_procs=1 ):
     self.clients = Authorizer().get_all_clients()
-    self.db = ChunkDB( db_name ) if db_name else None
+    self.db = ChunkDB( db_name )
     Manager.__init__( self, total_procs )
 
 
@@ -182,8 +182,8 @@ class DownloadManager( Manager ):
     self.run()
     self.init()
     
-    keys, entries = self.db.get_all_directory_permissions()
+    keys, entries = self.db.get_directory_permissions( read_dir )
     for entry in entries:
       self.__load_dir__( write_dir, dict( zip( keys, entry ) ) )
-    self.run()
 
+    self.run()

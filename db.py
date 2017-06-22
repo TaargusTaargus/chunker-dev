@@ -157,10 +157,11 @@ class ChunkDB( BaseDB ):
     return [ key[ 0 ] for key in self.cursor.description ], entries
 
 
-  def get_all_directory_permissions( self ):
+  def get_directory_permissions( self, file_handle='' ):
     entries = self.cursor.execute( "SELECT pt.* FROM " + self.DIRECTORY_TABLE
                                    + " dt INNER JOIN " + self.PERMISSIONS_TABLE
-                                   + " pt ON dt.directory_handle = pt.file_handle" ).fetchall()
+                                   + " pt ON dt.directory_handle = pt.file_handle"
+																	 + " WHERE dt.directory_handle LIKE '" + file_handle + "%%'"  ).fetchall()
     return [ key[ 0 ] for key in self.cursor.description ], entries 
 
 
