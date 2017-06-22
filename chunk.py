@@ -92,6 +92,7 @@ class Chunker( Process ):
 
     # chunk accounting
     self.chunk_count = len( self.meta_db.get_related_chunks() )
+    print( "chunk_size: " + str( flags[ 'chunk_size' ] ) )
     self.chunk_size = flags[ 'chunk_size' ]
     self.curr = None
 
@@ -171,14 +172,14 @@ class Chunker( Process ):
     
     file_size = file_stats.st_size
     if not self.chunk_size: 
-      self.curr.concatenate( file_handle, file_contents )
+      self.curr.concatenate( file_handle, file.read() )
       self.curr.chunk_name = file_name
       self.write_chunk()
       return 
 
     cnt = 0
     if file_size == 0:
-      self.curr.concatenate( file_handle, file_contents )
+      self.curr.concatenate( file_handle, file.read() )
 
     while file_size > 0:
 
