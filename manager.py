@@ -1,6 +1,6 @@
 from multiprocessing import Process, Queue
-from os.path import join, abspath, isfile, islink, isdir, relpath, normpath, basename
-from os import walk, remove
+from os.path import sep, join, abspath, isfile, islink, isdir, relpath, normpath, basename
+from os import walk, remove, getcwd
 from db import ChunkDB
 from storage import Storage
 from chunk import Chunker, Unchunker
@@ -91,7 +91,8 @@ class UploadManager( Manager ):
   def upload( self, read_path, write_dir ):
     #find all files within a directory, ignoring any existing chunk or metadata files
     all_files = []
-    read_path = abspath( read_path )
+    read_path = abspath( read_path )    
+    read_dir = normpath( basename( read_path ) )
 
     if isfile( read_path ):
       print( "ERROR: will only operate on directories ..." )
@@ -103,7 +104,8 @@ class UploadManager( Manager ):
       for root, dirs, files in walk( read_path, topdown=False, followlinks=False ):
         rel = relpath( root, read_path )
         rel = rel if rel[ 0 ] != '.' or len( rel ) > 1 else rel[ 1: ]
-        
+        rel = join( read_dir, rel )        
+
         for dir in dirs:
           self.__load_dir__( join( root, dir ), join( rel, dir ) )
 
@@ -126,6 +128,19 @@ class DownloadManager( Manager ):
     Manager.__init__( self, total_procs )
 
 
+  def __format_path__( self, path ):
+    if path[ 0 ] == sep:
+      if not len( path ):
+        path = ''
+      else:
+        path = path[ 1: ]
+    
+    if len( path ) and path[ -1 ] != sep:
+      path = path + sep
+
+    return path
+
+
   def __init_proc__( self, np ):
     storage = Storage( [ deepcopy( e ) for e in self.clients ] )
     return Unchunker( self.db, storage )
@@ -140,55 +155,35 @@ class DownloadManager( Manager ):
       file_entries = None
     self.next().queue_chunk( chunkid, write_dir, entry, file_entries )
 
-  def __load_dir__( self, dbentry, wdir ):
+
+  def __load_dir__( self, wdir, dbentry ):
     self.next().queue_dir( join( wdir, dbentry[ 'file_handle' ] ), dbentry )
 
-  def __load_link__( self, dbentry, wdir ):
+
+  def __load_link__( self, wdir, dbentry ):
     self.next().queue_link( join( wdir, dbentry[ 'link_handle' ] ), dbentry[ 'link_dest' ] )
-    
-
-## download that does not require a db
-
-#  def download( self, read_path, write_dir=None ):
-#    #find all files within a directory, ignoring any existing chunk or metadata files
-#    fs = Filesystem( self.cred.get_client(), read_path )
-#    write_dir = write_dir if write_dir else read_path
-#    all_files = []
-#    ensure_path( abspath( write_dir ) )
-#  
-#		### filesystem only handles remote now
-#   ### download does not write to database 
-#   for path, id, files, dirs in dwalk( self.cred.get_client(), fs.dirs[ read_path ]  ):
-#      abs_path = join( write_dir, path )   
- 
-#      if not flags[ 'collapse_flag' ] and path:
-#        ensure_path( abs_path )
    
-#      for file in files:
-#        self.__load_chunk__( write_dir, abs_path, file ) 
-       
-#    self.run()
-
-  def download( self, write_dir, download_path=None ):
-    #find all files within a directory, ignoring any existing chunk or metadata files
-    write_dir = write_dir if write_dir else read_path
-    all_files = []
-    ensure_path( abspath( write_dir ) )
  
-    for entry in self.db.fill_dicts_from_db( [ 'directory_handle' ], None, ChunkDB.DIRECTORY_TABLE ):
+  def download( self, read_dir, download_path=None ):
+    #find all files within a directory, ignoring any existing chunk or metadata files
+    all_files = [] 
+    read_dir = self.__format_path__( read_dir )
+    write_dir = getcwd()    
+ 
+    for entry in self.db.get_related_directories( where = { 'directory_handle': read_dir } ):
       ensure_path( join( write_dir, entry[ 'directory_handle' ] ) )
 
-    for entry in self.db.fill_dicts_from_db( [ 'chunk_id' ], None, ChunkDB.CHUNK_TABLE, distinct=True ):
-      self.__load_chunk__( write_dir, entry[ 'chunk_id' ] )
+    for cid, in self.db.get_related_chunks( read_dir ):
+      self.__load_chunk__( write_dir, cid )
 
-    for entry in self.db.fill_dicts_from_db( [ '*' ], None, ChunkDB.SYMLINK_TABLE ):
-      self.__load_link__( entry, write_dir )
+    for entry in self.db.get_related_symlinks( where = { 'link_path': read_dir } ):
+      self.__load_link__( write_dir, entry )
 
     self.run()
     self.init()
     
     keys, entries = self.db.get_all_directory_permissions()
     for entry in entries:
-      self.__load_dir__( dict( zip( keys, entry ) ), write_dir )
+      self.__load_dir__( write_dir, dict( zip( keys, entry ) ) )
     self.run()
 

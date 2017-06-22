@@ -189,7 +189,6 @@ elif mode == 'upload' or mode == 'download':
     print( 'creating ' + mode + 'ing service ...' )
  
   if mode == 'upload':
-    database_name = database_name if database_name else argv[ -1 ] + '-db'
     uploader = UploadManager( database_name, thread_count )
     uploader.upload( argv[ -1 ], writedir )
   else: 
@@ -200,4 +199,3 @@ elif mode == 'upload' or mode == 'download':
 elif mode == 'list':
   meta_db = ChunkDB( argv[ -1 ] )
   meta_db.list_all_files() 
-

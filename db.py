@@ -1,6 +1,12 @@
 from sqlite3 import connect
-from os.path import sep
- 
+from os.path import sep, join
+from state import CHUNKER_WORK_DIR
+
+CHUNKER_CHUNKDB_NAME = "chunker.db"
+CHUNKER_CHUNKDB_PATH = join( CHUNKER_WORK_DIR, CHUNKER_CHUNKDB_NAME ) 
+CHUNKER_USERDB_NAME = "users.db"
+CHUNKER_USERDB_PATH = join( CHUNKER_WORK_DIR, CHUNKER_USERDB_NAME )
+
 class BaseDB:
 
   def __init__( self, db_name ):
@@ -39,6 +45,7 @@ class BaseDB:
     else:
       distinct_clause = ""
 
+    #print( "select %s %s FROM %s %s" % ( distinct_clause, query_keys, table_name, where_clause ) )
     return self.cursor.execute( 'SELECT %s %s FROM %s %s' % ( distinct_clause, query_keys, table_name, where_clause ) ).fetchall()
 
 
@@ -47,8 +54,8 @@ class UserDB( BaseDB ):
   USER_TABLE = "users"
   GiB_DIVISOR = 1073741824
 
-  def __init__( self, db_name ):
-    BaseDB.__init__( self, db_name )
+  def __init__( self ):
+    BaseDB.__init__( self, CHUNKER_USERDB_PATH )
     tables = [ t for t, in self.cursor.execute( "SELECT name FROM sqlite_master WHERE type='table'" ).fetchall() ]        
 
     if self.USER_TABLE not in tables:
@@ -96,7 +103,7 @@ class ChunkDB( BaseDB ):
 
 
   def __init__( self, db_name=":memory:" ):
-    BaseDB.__init__( self, db_name )
+    BaseDB.__init__( self, db_name if db_name else CHUNKER_CHUNKDB_PATH )
     tables = [ t for t, in self.cursor.execute( "SELECT name FROM sqlite_master WHERE type='table'" ).fetchall() ]
 
     if self.PERMISSIONS_TABLE not in tables:
@@ -162,27 +169,27 @@ class ChunkDB( BaseDB ):
                                 + " WHERE file_handle LIKE '" + file_path + "%'" ).fetchall()  
 
 
-  def get_related_symlinks( self, cols=[ 'link_path', 'link_handle', 'link_dest' ], where={ 'link_path': '' }, like=True ):
-    return self.get_objects_from_db( cols, where, self.SYMLINK_TABLE, like )
+  def get_related_symlinks( self, cols=[ 'link_path', 'link_handle', 'link_dest' ], where={ 'link_path': '' }, like=True ): 
+    return self.fill_dicts_from_db( cols, where, self.SYMLINK_TABLE, like )
 
 
   def get_related_directories( self, cols=[ 'directory_handle' ], where={ 'directory_handle': '' }, like=True ):
-    return self.get_objects_from_db( cols, where, self.DIRECTORY_TABLE, like )
+    return self.fill_dicts_from_db( cols, where, self.DIRECTORY_TABLE, like )
 
 
   def get_related_files( self, cols=[ 'file_handle' ], where={ 'file_path': '' }, like=True ):
-    return self.get_objects_from_db( cols, where, self.FILE_TABLE, like )
+    return self.fill_dicts_from_db( cols, where, self.FILE_TABLE, like )
 
 
   def list_all_files( self ):
     print( "FILES:" )
-    for handle, in self.get_related_files( ):
-      print( sep + handle )
+    for entry in self.get_related_files( ):
+      print( sep + entry[ 'file_handle' ] )
 
     print( "SYMLINKS:" )
-    for path, handle, dest in self.get_related_symlinks( ):
-      print( sep + handle + " -> " + dest )
+    for entry in self.get_related_symlinks( ):
+      print( sep + entry[ 'link_handle' ] + " -> " + entry[ 'link_dest' ] )
 
     print( "DIRECTORIES:" )
-    for directory, in self.get_related_directories( ):
-      print( sep + directory )
+    for entry in self.get_related_directories( ):
+      print( sep + entry[ 'directory_handle' ] )
