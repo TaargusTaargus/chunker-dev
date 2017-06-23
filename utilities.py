@@ -5,7 +5,7 @@ from os.path import relpath as os_relpath
 from state import flags
 
 def drive_makedirs( client, path ):
-  abs_path = trim( path )
+  abs_path = format_path( path )[ :-1 ]
   root = "root"
   for part in abs_path.split( sep ):
     flag = False
@@ -41,9 +41,17 @@ def ensure_path( path ):
     makedirs( path )
 
 
-def trim( path ):
-  path = path[ 1: ] if path[ 0 ] == '/' else path
-  return path[ :-1 ] if path[ -1 ] == '/' else path
+# formats a path to: path/ (no slash at beginning and slash at end)
+def format_path( path ):
+  if len( path ):
+
+    if path[ 0 ] == sep:
+      path = path[ 1: ]
+    
+    if len( path ) and path[ -1 ] != sep:
+      path = path + sep
+    
+  return path
 
 
 def persistent_try( function, args, description ):

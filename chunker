@@ -1,11 +1,12 @@
 #!/usr/bin/python
 from manager import UploadManager, DownloadManager
 from storage import Storage
-from db import ChunkDB
+from db import ChunkDB, UserDB
 from auth import Authorizer
 from warnings import simplefilter
 from os.path import isfile
 from sys import argv
+from utilities import format_path
 from multiprocessing import cpu_count
 from state import flags
  
@@ -19,16 +20,18 @@ def usage():
 
                chunker download [OPTIONS...] DIR
 
-               chunker list DB-NAME
+               chunker purge DIR
+
+               chunker list DIR
 
                chunker help COMMAND
 
 
               GENERAL OPTIONS:)
                 -m db
-                  specify the database file to write to/read from
+                  specify the database file that chunker should use
                 -v, --verbose
-                  more verbose output from chunk
+                  more verbose output from chunk 
                 -t # of threads
                   request threading with specified number of threads
 
@@ -117,8 +120,6 @@ if '-v' in argv or '--verbose' in argv:
 if '-m' in argv:
   database_name = argv[ argv.index( '-m' ) + 1 ]
   argc -= 2
-elif mode == 'list':
-  database_name = argv[ -1 ]
 
 if '-t' in argv:
   thread_count = int( argv[ argv.index( '-t' ) + 1 ] )
@@ -197,5 +198,5 @@ elif mode == 'upload' or mode == 'download':
 
 #if user wants to list chunked files
 elif mode == 'list':
-  meta_db = ChunkDB( argv[ -1 ] )
-  meta_db.list_all_files() 
+  UserDB().list_users()
+  ChunkDB( database_name ).list_files( format_path( argv[ -1 ] ) )

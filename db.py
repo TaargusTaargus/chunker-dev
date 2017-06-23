@@ -49,6 +49,7 @@ class BaseDB:
     return self.cursor.execute( 'SELECT %s %s FROM %s %s' % ( distinct_clause, query_keys, table_name, where_clause ) ).fetchall()
 
 
+
 class UserDB( BaseDB ):
 
   USER_TABLE = "users"
@@ -182,15 +183,15 @@ class ChunkDB( BaseDB ):
     return self.fill_dicts_from_db( cols, where, self.FILE_TABLE, like )
 
 
-  def list_all_files( self ):
+  def list_files( self, path ):
     print( "FILES:" )
-    for entry in self.get_related_files( ):
+    for entry in self.get_related_files( where = { 'file_path': path } ):
       print( sep + entry[ 'file_handle' ] )
 
     print( "SYMLINKS:" )
-    for entry in self.get_related_symlinks( ):
+    for entry in self.get_related_symlinks( where = { 'link_path': path } ):
       print( sep + entry[ 'link_handle' ] + " -> " + entry[ 'link_dest' ] )
 
     print( "DIRECTORIES:" )
-    for entry in self.get_related_directories( ):
+    for entry in self.get_related_directories( where = { 'directory_handle': path } ):
       print( sep + entry[ 'directory_handle' ] )
