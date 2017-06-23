@@ -191,7 +191,7 @@ elif mode == 'upload' or mode == 'download':
  
   if mode == 'upload':
     uploader = UploadManager( database_name, thread_count )
-    uploader.upload( argv[ -1 ], writedir )
+    uploader.upload( argv[ -1 ] )
   else: 
     downloader = DownloadManager( database_name, thread_count )  
     downloader.download( argv[ -1 ]  )

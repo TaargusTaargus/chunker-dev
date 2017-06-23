@@ -34,6 +34,11 @@ class Storage:
     return file[ 'id' ]
 
 
+  def purge_chunks( self, chunkids ):
+    for cid in chunkids:
+      client.DeleteFile( cid )
+
+
   def read_chunk( self, username, id ):
     return persistent_try( self.__download_from_drive__, [ self.__get_client__( username ), id ], 'downloading' )
 
