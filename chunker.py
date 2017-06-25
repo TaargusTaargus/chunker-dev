@@ -2,7 +2,8 @@ from auth import Authorizer
 from db import ChunkDB, UserDB
 from manager import DownloadManager, UploadManager
 from storage import Storage
-from utilities import format_path
+from utilities import ensure_path, format_path
+from state import CHUNKER_WORK_DIR 
 
 class Launcher:
 
@@ -11,6 +12,7 @@ class Launcher:
 
 
   def init( self ):
+    ensure_path( CHUNKER_WORK_DIR ) 
     Authorizer().expand()
 
 

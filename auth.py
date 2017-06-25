@@ -15,7 +15,7 @@ APPLICATION_NAME = "chunker"
 CHUNKER_SCOPE = "https://www.googleapis.com/auth/drive"
 DEFAULT_CREDFILE_PATH = join( CHUNKER_WORK_DIR, "credentials" )
 DEFAULT_DRIVE_CHUNKDIR = ".chunker"
-DRIVE_SECRET_FILE = "/home/johnson/dev/python/chunker/chunker-dev/conf/client_secret_drive.json"
+DRIVE_SECRET_FILE = "/home/jhonson/Development/python/chunker-dev/conf/client_secret_drive.json"
 
 class Client:
 
@@ -70,7 +70,7 @@ class Authorizer:
     credentials = store.get()
     if not credentials or credentials.invalid:
       flow = client.flow_from_clientsecrets( DRIVE_SECRET_FILE, CHUNKER_SCOPE )
-      flow.user_agent = PPLICATION_NAME
+      flow.user_agent = APPLICATION_NAME
       tools.run_flow( flow, store, tools.argparser.parse_args( args = [ '--noauth_local_webserver' ] ) )
       print( 'storing credentials to ' + credential_path + " ... ")
     

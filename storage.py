@@ -8,7 +8,6 @@ from state import flags
 class Storage:
 
   def __init__( self, clients ):
-    self.storage = flags[ 'storage_mode' ]
     self.client_dict = { client.get_username(): client for client in clients }
     self.client_list = clients
     self.iterator = 0
