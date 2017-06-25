@@ -9,6 +9,7 @@ from sys import argv
 from utilities import format_path
 from multiprocessing import cpu_count
 from state import flags
+from chunker import Launcher
  
 def usage(): 
   print( '''
@@ -69,11 +70,11 @@ def download_usage():
 
 def list_usage():
   print( '''
-              Usage: chunker list DB-NAME
+              Usage: chunker list DIR
 
-              Command to list all chunked contents of a database
+              Command to list chunked files within a chunker database 
 
-              [DB-NAME]    - location of database containing chunk meta-data 
+              [DIR]        - directory path to check files under ( '/' checks all files )
          ''' )
 
 
@@ -95,6 +96,16 @@ def init_usage():
          ''' )
 
 
+def purge_usage():
+  print( '''
+              Usage: chunker purge DIR
+
+              Command to purge all uploaded chunks and entries in chunker database under and including listed directory
+ 
+              [DIR]      - directory to purge
+         ''' )
+
+
 simplefilter( "ignore" )
 argc = len( argv )
 if argc == 1:
@@ -102,16 +113,16 @@ if argc == 1:
   exit( 0 )
 
 mode = argv[ 1 ]
-if mode not in [ 'init', 'download', 'upload', 'list', 'help' ]:
+if mode not in [ 'purge', 'init', 'download', 'upload', 'list', 'help' ]:
   usage()
   exit( 0 )
 
 flags[ 'chunk_size' ] = 10000000
-database_name = None
-storage_mode = "drive"
-thread_count = cpu_count()
-cred_file = None
-writedir = None
+
+options = {}
+options[ 'database_name' ] = None
+options[ 'thread_count' ] = cpu_count()
+options[ 'work_dir' ] = format_path( argv[ -1 ] )
 
 if '-v' in argv or '--verbose' in argv:
   flags[ 'verbose_flag' ] = True
@@ -139,7 +150,7 @@ if mode == 'upload':
     flags[ 'force_flag' ] = True
     argc -= 1
 
-if thread_count > cpu_count():
+if options[ 'thread_count' ] > cpu_count():
   print( "WARNING: thread count higher than available cores (" + str( cpu_count() ) + "), might cause slowdown ... " )
 
 if argc < 3 and mode == 'upload':
@@ -162,6 +173,11 @@ if argc != 2 and mode == 'init':
   init_usage()
   exit()
 
+if argc != 3 and mode == 'purge':
+  purge_usage()
+  exit()
+
+
 if mode == 'help':
   command = argv[ -1 ]
   if command == 'upload':
@@ -174,29 +190,38 @@ if mode == 'help':
     list_usage()
   elif command == 'help':
     help_usage()
+  elif command == 'purge':
+    purge_usage()
   else:
     print( 'unknown command ...' )
   exit()
 
-elif mode == 'init':
-  Authorizer().expand()
+launcher = Launcher( options )
+
+if mode == 'init':
+  launcher.init()
 
 elif mode == 'upload' or mode == 'download': 
   if flags[ 'verbose_flag' ]:
     print( 'connecting to storage service ' + storage_mode + ' ...' )
-  credentials = Authorizer()
    
   if flags[ 'verbose_flag' ]:
     print( 'creating ' + mode + 'ing service ...' )
  
   if mode == 'upload':
-    uploader = UploadManager( database_name, thread_count )
-    uploader.upload( argv[ -1 ] )
+    launcher.upload()
+    #uploader = UploadManager( database_name, thread_count )
+    #uploader.upload( argv[ -1 ] )
   else: 
-    downloader = DownloadManager( database_name, thread_count )  
-    downloader.download( argv[ -1 ]  )
+    launcher.download()
+    #downloader = DownloadManager( database_name, thread_count )  
+    #downloader.download( argv[ -1 ]  )
+
+elif mode == 'purge':
+  launcher.purge()
 
 #if user wants to list chunked files
 elif mode == 'list':
-  UserDB().list_users()
-  ChunkDB( database_name ).list_files( format_path( argv[ -1 ] ) )
+  launcher.list()
+  #UserDB().list_users()
+  #ChunkDB( database_name ).list_files( format_path( argv[ -1 ] ) )

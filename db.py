@@ -2,7 +2,7 @@ from sqlite3 import connect
 from os.path import sep, join
 from state import CHUNKER_WORK_DIR
 
-CHUNKER_CHUNKDB_NAME = "chunker.db"
+CHUNKER_CHUNKDB_NAME = "chunks.db"
 CHUNKER_CHUNKDB_PATH = join( CHUNKER_WORK_DIR, CHUNKER_CHUNKDB_NAME ) 
 CHUNKER_USERDB_NAME = "users.db"
 CHUNKER_USERDB_PATH = join( CHUNKER_WORK_DIR, CHUNKER_USERDB_NAME )
@@ -184,11 +184,15 @@ class ChunkDB( BaseDB ):
 
 
   def remove_related_chunks( self, file_path='' ):
-    chunkids = self.cursor.execute( "SELECT DISTINCT chunk_id FROM " + self.CHUNK_TABLE
-																		+ " WHERE file_handle LIKE '" + file_path + "%%'" )
-    self.cursor.execute( "DELETE * FROM " + self.CHUNK_TABLE + " WHERE file_handle LIKE '" + file_path + "%%'" )
+    entries = self.cursor.execute( "SELECT DISTINCT username, chunk_id FROM " + self.CHUNK_TABLE
+																		+ " WHERE file_handle LIKE '" + file_path + "%%'" ).fetchall()
+    self.cursor.execute( "DELETE FROM " + self.CHUNK_TABLE + " WHERE file_handle LIKE '" + file_path + "%%'" )
+    self.cursor.execute( "DELETE FROM " + self.FILE_TABLE + " WHERE file_handle LIKE '" + file_path + "%%'" )
+    self.cursor.execute( "DELETE FROM " + self.DIRECTORY_TABLE + " WHERE directory_handle LIKE '" + file_path + "%%'" )
+    self.cursor.execute( "DELETE FROM " + self.SYMLINK_TABLE + " WHERE link_path LIKE '" + file_path + "%%'" )
+    self.cursor.execute( "DELETE FROM " + self.PERMISSIONS_TABLE + " WHERE file_handle LIKE '" + file_path + "%%'" )
     self.db.commit()
-    return chunkids
+    return entries
 
 
   def list_files( self, path ):

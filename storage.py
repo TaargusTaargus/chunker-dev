@@ -34,9 +34,12 @@ class Storage:
     return file[ 'id' ]
 
 
-  def purge_chunks( self, chunkids ):
-    for cid in chunkids:
-      client.DeleteFile( cid )
+  def purge_chunks( self, entries ):
+    for username, cid in entries:
+      self.__get_client__( username ) \
+            .get_client() \
+            .CreateFile( { 'id': cid } ) \
+            .Delete()
 
 
   def read_chunk( self, username, id ):

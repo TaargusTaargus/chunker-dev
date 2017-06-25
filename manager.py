@@ -88,11 +88,11 @@ class UploadManager( Manager ):
     remove( proc.meta_db.db_name )
 
 
-  def upload( self, read_path, write_dir ):
+  def upload( self, read_path ):
     #find all files within a directory, ignoring any existing chunk or metadata files
     all_files = []
     read_path = abspath( read_path )    
-    read_dir = normpath( basename( read_path ) )
+    read_dir = normpath( basename( read_path ) ) + sep
 
     if isfile( read_path ):
       print( "ERROR: will only operate on directories ..." )
@@ -101,6 +101,7 @@ class UploadManager( Manager ):
       print( "ERROR: " + read_path + " does not exist ..." )
       return
     else:
+      self.__load_dir__( read_path, read_dir )
       for root, dirs, files in walk( read_path, topdown=False, followlinks=False ):
         rel = relpath( root, read_path )
         rel = rel if rel[ 0 ] != '.' or len( rel ) > 1 else rel[ 1: ]
@@ -126,19 +127,6 @@ class DownloadManager( Manager ):
     self.clients = Authorizer().get_all_clients()
     self.db = ChunkDB( db_name )
     Manager.__init__( self, total_procs )
-
-
-  def __format_path__( self, path ):
-    if path[ 0 ] == sep:
-      if not len( path ):
-        path = ''
-      else:
-        path = path[ 1: ]
-    
-    if len( path ) and path[ -1 ] != sep:
-      path = path + sep
-
-    return path
 
 
   def __init_proc__( self, np ):
@@ -167,9 +155,8 @@ class DownloadManager( Manager ):
   def download( self, read_dir, download_path=None ):
     #find all files within a directory, ignoring any existing chunk or metadata files
     all_files = [] 
-    read_dir = self.__format_path__( read_dir )
     write_dir = getcwd()    
- 
+
     for entry in self.db.get_related_directories( where = { 'directory_handle': read_dir } ):
       ensure_path( join( write_dir, entry[ 'directory_handle' ] ) )
 

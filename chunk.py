@@ -92,7 +92,6 @@ class Chunker( Process ):
 
     # chunk accounting
     self.chunk_count = len( self.meta_db.get_related_chunks() )
-    print( "chunk_size: " + str( flags[ 'chunk_size' ] ) )
     self.chunk_size = flags[ 'chunk_size' ]
     self.curr = None
 
