@@ -183,7 +183,7 @@ class ChunkDB( BaseDB ):
     return self.fill_dicts_from_db( cols, where, self.FILE_TABLE, like )
 
 
-  def remove_related_chunks( self, file_path='' ):
+  def purge_path( self, file_path='' ):
     entries = self.cursor.execute( "SELECT DISTINCT username, chunk_id FROM " + self.CHUNK_TABLE
 																		+ " WHERE file_handle LIKE '" + file_path + "%%'" ).fetchall()
     self.cursor.execute( "DELETE FROM " + self.CHUNK_TABLE + " WHERE file_handle LIKE '" + file_path + "%%'" )
@@ -196,6 +196,7 @@ class ChunkDB( BaseDB ):
 
 
   def list_files( self, path ):
+    print( "path: " + path )
     print( "FILES:" )
     for entry in self.get_related_files( where = { 'file_path': path } ):
       print( sep + entry[ 'file_handle' ] )

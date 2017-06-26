@@ -26,7 +26,7 @@ class Launcher:
     Storage( Authorizer().get_all_clients() ) \
       .purge_chunks(   
         ChunkDB( self.flags[ 'database_name' ] ) \
-				  .remove_related_chunks( self.flags[ 'work_dir' ] )
+				  .purge_path( self.flags[ 'work_dir' ] )
       )
 
 
