@@ -114,9 +114,10 @@ class ChunkDB( BaseDB ):
                                                                       
 
     if self.CHUNK_TABLE not in tables:
-      self.cursor.execute( "CREATE TABLE " + self.CHUNK_TABLE + ''' ( username text, chunk_id text,
-                                                                      file_handle text, start_in_chunk text,
-                                                                      end_in_chunk text, encoding text,
+      self.cursor.execute( "CREATE TABLE " + self.CHUNK_TABLE + ''' ( pid int, corder int,
+                                                                      username text, chunk_id text,
+                                                                      start_in_chunk text, end_in_chunk text,
+                                                                      file_handle text, encoding text,
                                                                       hash_key text, init_vec text )''' )
 
     if self.FILE_TABLE not in tables:
@@ -167,8 +168,9 @@ class ChunkDB( BaseDB ):
 
 
   def get_related_chunks( self, file_path='' ):
-    return self.cursor.execute( 'SELECT DISTINCT chunk_id FROM ' + self.CHUNK_TABLE 
-                                + " WHERE file_handle LIKE '" + file_path + "%'" ).fetchall()  
+    return self.cursor.execute( 'SELECT DISTINCT pid, chunk_id FROM ' + self.CHUNK_TABLE 
+                                + " WHERE file_handle LIKE '" + file_path + "%'"
+                                + " ORDER BY corder" ).fetchall()  
 
 
   def get_related_symlinks( self, cols=[ 'link_path', 'link_handle', 'link_dest' ], where={ 'link_path': '' }, like=True ): 
@@ -196,7 +198,6 @@ class ChunkDB( BaseDB ):
 
 
   def list_files( self, path ):
-    print( "path: " + path )
     print( "FILES:" )
     for entry in self.get_related_files( where = { 'file_path': path } ):
       print( sep + entry[ 'file_handle' ] )

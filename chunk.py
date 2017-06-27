@@ -26,10 +26,9 @@ class Chunk:
  
   def concatenate( self, file_handle, str ):
     self.string += str
-    meta = {}
-    meta[ 'file_handle' ] = file_handle
-    meta[ 'start_in_chunk' ] = self.used
-    meta[ 'end_in_chunk' ] = self.used + len( str ) - 1 
+    meta = { 'file_handle': file_handle,
+             'start_in_chunk': self.used,
+             'end_in_chunk': self.used + len( str ) - 1 }
     self.meta.append( meta ) 
     self.used += len( str )
 
@@ -126,6 +125,8 @@ class Chunker( Process ):
       e[ 'hash_key' ] = key if self.encrypt else ''
       e[ 'init_vec' ] = self.iv if self.encrypt else ''
       e[ 'encoding' ] = encoding
+      e[ 'pid' ] = self.pid
+      e[ 'corder' ] = self.chunk_count
       self.meta_db.fill_db_from_dict( e, self.meta_db.CHUNK_TABLE )
 
     self.chunk_count += 1

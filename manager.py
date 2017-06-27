@@ -126,6 +126,7 @@ class DownloadManager( Manager ):
   def __init__( self, db_name=None, total_procs=1 ):
     self.clients = Authorizer().get_all_clients()
     self.db = ChunkDB( db_name )
+    self.pidict = {}
     Manager.__init__( self, total_procs )
 
 
@@ -134,14 +135,21 @@ class DownloadManager( Manager ):
     return Unchunker( self.db, storage )
 
    
-  def __load_chunk__( self, write_dir, chunkid ):
+  def __load_chunk__( self, write_dir, pid, chunkid ):
+    if pid in self.pidict:
+      thread = self.pidict[ pid ] 
+    else:
+      self.pidict[ pid ] = self.next()
+      thread = self.pidict[ pid ]
+
     try:
       entry = self.db.fill_dicts_from_db( [ 'username', 'encoding', 'hash_key', 'init_vec' ], { "chunk_id": chunkid }, ChunkDB.CHUNK_TABLE, entries=1 ).pop()
       file_entries = self.db.get_chunk_file_entries( chunkid )
     except:
       entry = None
       file_entries = None
-    self.next().queue_chunk( chunkid, write_dir, entry, file_entries )
+
+    thread.queue_chunk( chunkid, write_dir, entry, file_entries )
 
 
   def __load_dir__( self, wdir, dbentry ):
@@ -153,15 +161,14 @@ class DownloadManager( Manager ):
    
  
   def download( self, read_dir, download_path=None ):
-    #find all files within a directory, ignoring any existing chunk or metadata files
     all_files = [] 
     write_dir = getcwd()    
 
     for entry in self.db.get_related_directories( where = { 'directory_handle': read_dir } ):
       ensure_path( join( write_dir, entry[ 'directory_handle' ] ) )
 
-    for cid, in self.db.get_related_chunks( read_dir ):
-      self.__load_chunk__( write_dir, cid )
+    for pid, cid in self.db.get_related_chunks( read_dir ):
+      self.__load_chunk__( write_dir, pid, cid )
 
     for entry in self.db.get_related_symlinks( where = { 'link_path': read_dir } ):
       self.__load_link__( write_dir, entry )
