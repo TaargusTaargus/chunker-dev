@@ -83,16 +83,24 @@ class UserDB( BaseDB ):
     self.db.commit()
 
 
-  def get_users( self, keys=[ 'username' ], where=None ):
+  def get_users( self, keys=[ 'username', 'quota_gib', 'used_gib' ], where=None ):
     return self.get_objects_from_db( keys, where, self.USER_TABLE, False )
 
  
-  def list_users( self ):
-    print( "USERS:" )
-    for user, in self.get_users():
-      print( user )
+  def list_user_info( self ):
+    total_quota, total_used = 0, 0
+    userinfo = self.get_users()
+    if len( userinfo ) > 0:
+      print( "LINKED ACCOUNT:" )
+      for username, quota_gib, used_gib in userinfo:
+        print( user + ": " + str( used_gib ) + "GB of " + str( quota_gib ) + "GB used." )
+        total_quota = total_quota + quota_gib
+        total_used = total_used + used_gib
+      print( "\nTotal Used Space: " + str( total_used ) + "GB of " + str( total_quota ) + "GB used." )
+    else:
+      print( "You have not linked any accounts to chunker." )
 
- 
+
 class ChunkDB( BaseDB ):
 
 # database table names

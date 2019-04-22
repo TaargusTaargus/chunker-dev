@@ -1,0 +1,5 @@
+#!/bin/bash
+sudo pip3 install PyCrypto
+sudo pip3 install oauth2client
+sudo pip3 install --ignore-installed -U PyDrive
+sudo pip3 install boxsdk

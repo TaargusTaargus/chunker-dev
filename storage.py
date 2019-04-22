@@ -1,4 +1,4 @@
-from StringIO import StringIO
+from io import StringIO
 from gzip import open as g_open
 from utilities import ensure_path, persistent_try
 from time import sleep

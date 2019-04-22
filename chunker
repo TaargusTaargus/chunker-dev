@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 from manager import UploadManager, DownloadManager
 from storage import Storage
 from db import ChunkDB, UserDB
@@ -25,10 +25,12 @@ def usage():
 
                chunker list DIR
 
+               chunker info
+
                chunker help COMMAND
 
 
-              GENERAL OPTIONS:)
+              GENERAL OPTIONS:
                 -m db
                   specify the database file that chunker should use
                 -v, --verbose
@@ -96,6 +98,14 @@ def init_usage():
          ''' )
 
 
+def info_usage():
+  print( '''
+             Usage: chunker info
+
+             Command to list all attached accounts and space linked to the chunker application.
+         ''' )
+
+
 def purge_usage():
   print( '''
               Usage: chunker purge DIR
@@ -113,7 +123,7 @@ if argc == 1:
   exit( 0 )
 
 mode = argv[ 1 ]
-if mode not in [ 'purge', 'init', 'download', 'upload', 'list', 'help' ]:
+if mode not in [ 'info', 'purge', 'init', 'download', 'upload', 'list', 'help' ]:
   usage()
   exit( 0 )
 
@@ -192,6 +202,8 @@ if mode == 'help':
     help_usage()
   elif command == 'purge':
     purge_usage()
+  elif command == 'info':
+    info_usage()
   else:
     print( 'unknown command ...' )
   exit()
@@ -223,5 +235,7 @@ elif mode == 'purge':
 #if user wants to list chunked files
 elif mode == 'list':
   launcher.list()
-  #UserDB().list_users()
-  #ChunkDB( database_name ).list_files( format_path( argv[ -1 ] ) )
+
+
+elif mode == 'info':
+  launcher.info()

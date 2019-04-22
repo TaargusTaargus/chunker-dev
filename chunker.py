@@ -16,8 +16,11 @@ class Launcher:
     Authorizer().expand()
 
 
+  def info( self ):
+    UserDB().list_user_info()
+
+
   def list( self ):
-    UserDB().list_users()
     ChunkDB( self.flags[ 'database_name' ] ) \
     		.list_files( self.flags[ 'work_dir' ] )
 

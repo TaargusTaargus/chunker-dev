@@ -15,7 +15,7 @@ APPLICATION_NAME = "chunker"
 CHUNKER_SCOPE = "https://www.googleapis.com/auth/drive"
 DEFAULT_CREDFILE_PATH = join( CHUNKER_WORK_DIR, "credentials" )
 DEFAULT_DRIVE_CHUNKDIR = ".chunker"
-DRIVE_SECRET_FILE = "/home/jhonson/Development/python/chunker-dev/conf/client_secret_drive.json"
+DRIVE_SECRET_FILE = "/home/jhonson/dev/chunker-dev/conf/client_secret_drive.json"
 
 class Client:
 
