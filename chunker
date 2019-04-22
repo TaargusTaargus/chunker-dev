@@ -94,7 +94,7 @@ def init_usage():
   print( '''
               Usage: chunker init
            
-              Command to add a new user Drive to the pool of available storage space
+              Command to add a new user Drive to the pool of available storage space.
          ''' )
 
 

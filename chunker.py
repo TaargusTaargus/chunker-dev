@@ -17,7 +17,7 @@ class Launcher:
 
 
   def info( self ):
-    UserDB().list_user_info()
+    Authorizer().list_linked_user_info()
 
 
   def list( self ):

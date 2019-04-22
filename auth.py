@@ -16,13 +16,16 @@ CHUNKER_SCOPE = "https://www.googleapis.com/auth/drive"
 DEFAULT_CREDFILE_PATH = join( CHUNKER_WORK_DIR, "credentials" )
 DEFAULT_DRIVE_CHUNKDIR = ".chunker"
 DRIVE_SECRET_FILE = "/home/jhonson/dev/chunker-dev/conf/client_secret_drive.json"
+GiB_DIVISOR = 1073741824
 
 class Client:
 
-  def __init__( self, client, username, cdir ):
+  def __init__( self, client, username, cdir, used, quota ):
     self.client = client
     self.username = username
     self.cdir = cdir
+    self.used = used
+    self.quota = quota
 
 
   def get_chunk_dir( self ):
@@ -32,7 +35,15 @@ class Client:
   def get_client( self ):
     return self.client
 
-  
+
+  def get_quota( self ):
+    return self.quota
+
+
+  def get_used( self ):
+    return self.used  
+
+
   def get_username( self ):
     return self.username
 
@@ -60,7 +71,6 @@ class Authorizer:
 
   def __update_user__( self, client ):
     about = client.GetAbout()
-    self.udb.update_user( about[ 'user' ][ 'emailAddress' ], about[ 'quotaBytesUsed' ], about[ 'quotaBytesTotal' ] )
 
 
   def expand( self ):
@@ -84,7 +94,23 @@ class Authorizer:
     for name, path, cdir in self.udb.get_users( keys = [ 'username', 'cred_path', 'chunk_dir' ] ):
       path = join( CHUNKER_WORK_DIR, path )
       client = self.__authorize__( path )
-      self.__update_user__( client )
-      clients.append( Client( client, name, cdir ) )
+      about = client.GetAbout()
+      clients.append( Client( client, name, cdir, about[ 'quotaBytesUsed' ], about[ 'quotaBytesTotal' ] ) )
     return clients
+
+
+  def list_linked_user_info( self ):
+    clients = self.get_all_clients()
+    if len( clients ) > 0:
+      print( "LINKED ACCOUNT(S):" )
+      total_quota, total_used = 0, 0
+      for client in clients:
+        quota_gib = float( client.get_quota() ) / GiB_DIVISOR if client.get_quota() else 0
+        used_gib = float( client.get_used() ) / GiB_DIVISOR if client.get_used() else 0
+        print( "{0}: {1:1.2f} GB of {2:1.2f} GB.".format( client.get_username(), used_gib, quota_gib ) )
+        total_quota = total_quota + quota_gib
+        total_used = total_used + used_gib
+      print( "\nTotal Used Space: {0:1.2f} GB of {1:1.2f} GB used.".format( total_used, total_quota ) )
+    else:
+      print( "You have not linked any accounts to chunker." )
 

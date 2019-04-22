@@ -60,8 +60,7 @@ class UserDB( BaseDB ):
     tables = [ t for t, in self.cursor.execute( "SELECT name FROM sqlite_master WHERE type='table'" ).fetchall() ]        
 
     if self.USER_TABLE not in tables:
-      self.cursor.execute( "CREATE TABLE " + self.USER_TABLE + " ( username text, quota_bytes int, quota_gib int, \
-                                                                                 used_bytes int, used_gib int, cred_path text, \
+      self.cursor.execute( "CREATE TABLE " + self.USER_TABLE + " ( username text, cred_path text, \
                                                                                  chunk_dir text, UNIQUE( username ) ) " )
     try:
       self.db.commit()
@@ -77,8 +76,8 @@ class UserDB( BaseDB ):
 
   def update_user( self, username, used_bytes, quota_bytes ):
     self.cursor.execute( "UPDATE " + self.USER_TABLE + " SET "
-                          + "quota_bytes=" + str( quota_bytes ) + ", quota_gib=" + str( int ( int( quota_bytes ) /self.GiB_DIVISOR ) ) + "," 
-                          + " used_bytes=" + str( used_bytes ) + ", used_gib=" + str( int( int( used_bytes ) / self.GiB_DIVISOR ) )
+                          + "quota_bytes=" + str( quota_bytes ) + ", quota_gib=" + str( float ( int( quota_bytes ) /self.GiB_DIVISOR ) ) + "," 
+                          + " used_bytes=" + str( used_bytes ) + ", used_gib=" + str( float( int( used_bytes ) / self.GiB_DIVISOR ) )
                           + " WHERE username='" + username + "'" )
     self.db.commit()
 
@@ -93,12 +92,15 @@ class UserDB( BaseDB ):
     if len( userinfo ) > 0:
       print( "LINKED ACCOUNT:" )
       for username, quota_gib, used_gib in userinfo:
-        print( user + ": " + str( used_gib ) + "GB of " + str( quota_gib ) + "GB used." )
+        quota_gib = quota_gib if quota_gib else 0
+        used_gib = used_gib if used_gib else 0
+        print( username + ": " + str( used_gib ) + " GB of " + str( quota_gib  ) + " GB used." )
         total_quota = total_quota + quota_gib
         total_used = total_used + used_gib
-      print( "\nTotal Used Space: " + str( total_used ) + "GB of " + str( total_quota ) + "GB used." )
+      print( "\nTotal Used Space: " + str( total_used ) + " GB of " + str( total_quota ) + " GB used." )
     else:
       print( "You have not linked any accounts to chunker." )
+
 
 
 class ChunkDB( BaseDB ):
