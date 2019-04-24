@@ -17,6 +17,8 @@ def usage():
 
                chunker init
 
+               chunker info
+
                chunker upload [OPTIONS...] DIR
 
                chunker download [OPTIONS...] DIR
@@ -24,8 +26,6 @@ def usage():
                chunker purge DIR
 
                chunker list DIR
-
-               chunker info
 
                chunker help COMMAND
 

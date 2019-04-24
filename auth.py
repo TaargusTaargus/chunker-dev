@@ -107,7 +107,7 @@ class Authorizer:
       for client in clients:
         quota_gib = float( client.get_quota() ) / GiB_DIVISOR if client.get_quota() else 0
         used_gib = float( client.get_used() ) / GiB_DIVISOR if client.get_used() else 0
-        print( "{0}: {1:1.2f} GB of {2:1.2f} GB.".format( client.get_username(), used_gib, quota_gib ) )
+        print( "{0}: {1:1.2f} GB of {2:1.2f} GB used.".format( client.get_username(), used_gib, quota_gib ) )
         total_quota = total_quota + quota_gib
         total_used = total_used + used_gib
       print( "\nTotal Used Space: {0:1.2f} GB of {1:1.2f} GB used.".format( total_used, total_quota ) )
